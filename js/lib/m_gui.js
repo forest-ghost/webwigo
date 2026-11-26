@@ -405,23 +405,12 @@ define([
     mSCR.Show(gobj)
   }
 
-  function targetsAreVisible() {
-    return (_screens[ITEMSCREEN].items.length > 0)
-  }
-
-  function targetIsVisible(idx) {
-    var items
-    items = _screens[ITEMSCREEN].items
-    for(var i = 0 ; i < items.length ; i++) {
-      if (items[i].idx == idx)
-        return true
-    }
-    items = _screens[INVENTORYSCREEN].items
-    for(var i = 0 ; i < items.length ; i++) {
-      if (items[i].idx == idx)
-        return true
-    }
-    return false
+  function visibleCommandTargets(cmd) {
+    return cmd.targets.filter(function(target) {
+      return cmd.withall ||
+        __itembyobjidx(_screens[ITEMSCREEN].items, target.ref) !== undefined ||
+        __itembyobjidx(_screens[INVENTORYSCREEN].items, target.ref) !== undefined
+    })
   }
 
   function DetailScreen_updateCommands(screenidx, objidx, obj) {
@@ -430,15 +419,16 @@ define([
     for(var i = 0 ; i < item.commands.length ; i++) {
       var cmd = item.commands[i]
       if (cmd.enabled) {
+        var hasTargets = cmd.cmdwith && visibleCommandTargets(cmd).length > 0
         var data = {
           id      : "id-detailscreen-items-"+i,
           text    : cmd.text                  ,
           cmdwith : cmd.cmdwith               ,
-          targets : targetsAreVisible()
+          targets : hasTargets
         }
         $("#id-detailscreen-items").append(_.template(mTPL.dtl__i)(data))
         if (cmd.cmdwith) {
-          if (targetsAreVisible()) {
+          if (hasTargets) {
             $("#"+data.id).on("click", { cmdidx: cmd.idx }, function(event) {
               mSCR.Hide(obj)
               DetailScreen(screenidx, objidx, true, event.data.cmdidx)
@@ -455,30 +445,21 @@ define([
   }
 
   function DetailScreen_updateWithCmds(screenidx, objidx, cmdidx, obj) {
-    if (targetsAreVisible()) {
-      $("#id-detailscreen-items").empty()
-      var item = __itembyobjidx(_screens[screenidx].items, objidx).commands[cmdidx-1]
-      for(var i = 0 ; i < item.targets.length ; i++) {
-        var tgt = item.targets[i]
-        if (item.withall || targetIsVisible(tgt.ref)) {
-          var data = {
-            id      : "id-detailscreen-items-"+i,
-            text    : tgt.name                  ,
-            cmdwith : false                     ,
-            targets : true
-          }
-          $("#id-detailscreen-items").append(_.template(mTPL.dtl__i)(data))
-          $("#"+data.id).on("click", { cmdidx: cmdidx, tgtidx: tgt.idx }, function(event) {
-            mSCR.Hide(obj)
-            ExecuteCommand(
-              objidx, event.data.cmdidx, event.data.tgtidx
-            )
-          })
-        }
+    $("#id-detailscreen-items").empty()
+    var cmd = __itembyobjidx(_screens[screenidx].items, objidx).commands[cmdidx-1]
+    visibleCommandTargets(cmd).forEach(function(target, i) {
+      var data = {
+        id      : "id-detailscreen-items-"+i,
+        text    : target.name               ,
+        cmdwith : false                     ,
+        targets : true
       }
-    } else {
-      mSCR.Hide(obj)
-    }
+      $("#id-detailscreen-items").append(_.template(mTPL.dtl__i)(data))
+      $("#"+data.id).on("click", function() {
+        mSCR.Hide(obj)
+        ExecuteCommand(objidx, cmdidx, target.idx)
+      })
+    })
   }
 
   function ExecuteCommand(objidx, cmdidx, tgtidx) {

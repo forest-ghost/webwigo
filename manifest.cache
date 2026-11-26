@@ -62,7 +62,6 @@ js/lib/m_rdr.js
 js/boot.js
 lib/jquery-ui.min.js
 lib/prism.css
-lib/Bing.js
 lib/backbone-min.js
 lib/tinyterm.min.js
 lib/text.js

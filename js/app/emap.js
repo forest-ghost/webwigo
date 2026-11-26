@@ -16,12 +16,12 @@
 */
 
 define([
-  "leafletbing",
+  "leaflet",
   "awesomemarkers",
   "custombutton",
   "lib/m_map",
   "app/app0"
-], function(leafletbing, AwesomeMarkers, custombutton, mMAP, App) {
+], function(L, AwesomeMarkers, custombutton, mMAP, App) {
 
   var map    = undefined
   var player = undefined
@@ -52,34 +52,8 @@ define([
     map.setView(loc, 16)
     map.setMaxBounds([[-85, -190], [+85, +190]])
 
-    // layers setup
-    var osmll = L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://www.openstreetmap.org/">OpenStreetMap</a>'
-    })
-
-    var broad = new L.BingLayer("Ahu63wITytGR4Yr2oT0_Ow60Ulern6C8LWf_50dpDVE8Fk3E6VSWge1jSF_px2V1", {
-      type: 'Road'
-    });
-    var bhybr = new L.BingLayer("Ahu63wITytGR4Yr2oT0_Ow60Ulern6C8LWf_50dpDVE8Fk3E6VSWge1jSF_px2V1", {
-      type: 'AerialWithLabels'
-    });
-    var bsate = new L.BingLayer("Ahu63wITytGR4Yr2oT0_Ow60Ulern6C8LWf_50dpDVE8Fk3E6VSWge1jSF_px2V1", {
-      type: 'Aerial'
-    });
-
-    layers = {
-      "&nbsp;Bing Road"     : broad,
-      "&nbsp;Bing Hybrid"   : bhybr,
-      "&nbsp;Bing Satellite": bsate,
-      "&nbsp;OSM Legacy"    : osmll
-    }
-
-    // select default layer
-    map.addLayer(broad)
-
-    // map controls
-    L.control.layers(layers, {}, {
-      position: "topleft"
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
     }).addTo(map)
 
     L.control.custombutton({

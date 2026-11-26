@@ -29,7 +29,6 @@ require.config({
     prism         : "../lib/prism",
 
     leaflet       : "../lib/leaflet",
-    leafletbing   : "../lib/Bing",
     awesomemarkers: "../lib/leaflet.awesome-markers.min",
     custombutton  : "app/L.CustomButton",
 
@@ -41,7 +40,6 @@ require.config({
   },
 
   shim: {
-    leafletbing   : ["leaflet"],
     awesomemarkers: ["leaflet"],
     custombutton  : ["leaflet"],
 

@@ -1,2 +1,4 @@
 # webwigo ignored files
 pkg/*
+.vercel
+.env*

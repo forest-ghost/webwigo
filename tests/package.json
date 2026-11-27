@@ -1,0 +1,11 @@
+{
+  "name": "webwigo-regression-tests",
+  "private": true,
+  "scripts": {
+    "install-browsers": "playwright install chromium firefox",
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.1"
+  }
+}

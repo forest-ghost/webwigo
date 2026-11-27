@@ -67,7 +67,7 @@
           scrollingSpeed      : 500,
           autoScrolling       : true,
           scrollOverflow      : true,
-          normalScrollElements: "#header, .section, .ui-dialog-titlebar, #id-emul, #id-term",
+          keyboardScrolling   : false,
           afterRender: function() {
             require(["app/app1"], function(app) {
               app.init1()
@@ -89,6 +89,8 @@
             })
           }
         })
+        // The toolbar changes sections. The wheel and touch gestures belong to the current view.
+        $.fn.fullpage.setAllowScrolling(false)
       })
     </script>
   </head>
@@ -134,7 +136,9 @@
 -->
       </ul>
       <ul id="menu-right" class="menu">
-        <li id="id-webwigo-audio-retry" hidden><button type="button" class="menu-action" id="id-webwigo-play-audio" aria-label="Play cartridge audio"><i class="fa fa-volume-up" aria-hidden="true"></i></button></li>
+        <li>
+          <button type="button" class="menu-action" id="id-webwigo-audio-toggle" aria-label="Cartridge sound" aria-pressed="true" title="Turn sound off"><i class="fa fa-volume-up" aria-hidden="true"></i></button>
+        </li>
         <li>
           <a id="id-webwigo-about-link" href="#id-webwigo-about" data-toggle="modal"
              aria-haspopup="dialog" aria-controls="id-webwigo-about">About</a>

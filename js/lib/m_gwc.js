@@ -17,8 +17,10 @@
 
 define([
   "lib/m_gwx",
-  "lib/m_text"
-], function(mGWX, decodeByteString) {
+  "lib/m_text",
+  "lib/m_luachunk",
+  "lib/m_fdl"
+], function(mGWX, decodeByteString, normalizeChunk, fdlToWav) {
 
   var _wURL = window.webkitURL || window.mozURL || window.URL
 
@@ -64,6 +66,8 @@ define([
       data = decodeByteString(data)
       break;
     case "buf":
+      if (size > view.byteLength - offt)
+        throw new RangeError("Incomplete GWC object")
       data = hdlr.data.subarray(offt, offt+size)
       hdlr.offt += size
       break
@@ -155,13 +159,11 @@ define([
         obj.buf = _read(hdlr, "buf", obj.siz)
       } else {
         if (_read(hdlr, "u8")) {
-          var blob
           obj.typ = _read(hdlr, "u32")
           obj.siz = _read(hdlr, "u32")
-          var blb = new Blob(
-            [_read(hdlr, "buf", obj.siz)], { type: _typ2mim(obj.typ) }
-          ) 
-          obj.buf = _wURL.createObjectURL(blb)
+          var bytes = _read(hdlr, "buf", obj.siz)
+          obj.buf = obj.typ === OBJTYP_FDL ? bytes :
+            _wURL.createObjectURL(new Blob([bytes], { type: _typ2mim(obj.typ) }))
         }
       }
     }
@@ -246,7 +248,12 @@ define([
           return
         }
           
-        that._code = that._hdlr.p_objects[0].buf
+        try {
+          that._code = normalizeChunk(that._hdlr.p_objects[0].buf)
+        } catch(e) {
+          cb_onError(e.message)
+          return
+        }
         that._name = name
         cb_onSuccess(that)
       }
@@ -263,16 +270,13 @@ define([
     getMediaData: function(id, cb_onSuccess) {
       for(var i = 0 ; i < this._hdlr.n_objects ; i++) {
         var obj = this._hdlr.p_objects[i]
-        if (typeof id == "string") {
-          if (id === _filename(obj)) {
-            cb_onSuccess(obj.buf)
-            return
+        if (typeof id === "string" ? id === _filename(obj) : id == obj.oid) {
+          if (obj.typ === OBJTYP_FDL && obj.buf instanceof Uint8Array) {
+            var audio = fdlToWav(obj.buf)
+            obj.buf = audio ? _wURL.createObjectURL(audio) : ""
           }
-        } else {
-          if (id == obj.oid) {
-            cb_onSuccess(obj.buf)
-            return
-          }
+          cb_onSuccess(obj.buf)
+          return
         }
       }
       cb_onSuccess("")
@@ -287,7 +291,7 @@ define([
 
     dispose: function() {
       this._hdlr.p_objects.forEach(function(object) {
-        if (typeof object.buf === "string")
+        if (typeof object.buf === "string" && object.buf)
           _wURL.revokeObjectURL(object.buf)
       })
     },

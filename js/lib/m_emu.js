@@ -42,6 +42,44 @@ define([
   var _this = {}
   var runtimeReady
   var pendingPlay
+  var moduleRoot = "/cartridge-modules"
+  var moduleRootCreated = false
+  var modulesMounted = false
+
+  function clearCartridgeModules() {
+    if (modulesMounted) {
+      FS.unmount(moduleRoot)
+      modulesMounted = false
+    }
+  }
+
+  function mountCartridgeModules(reader) {
+    if (!reader.getSourceModules)
+      return
+    var modules = reader.getSourceModules()
+    if (!modules.length)
+      return
+    if (!moduleRootCreated) {
+      FS.mkdir(moduleRoot)
+      moduleRootCreated = true
+    }
+    FS.mount(MEMFS, {}, moduleRoot)
+    modulesMounted = true
+    var directories = new Set()
+    modules.forEach(function(module) {
+      var parts = module.path.split("/")
+      var filename = parts.pop()
+      var directory = moduleRoot
+      parts.forEach(function(part) {
+        directory += "/" + part
+        if (!directories.has(directory)) {
+          FS.mkdir(directory)
+          directories.add(directory)
+        }
+      })
+      FS.writeFile(directory + "/" + filename, module.bytes, { encoding: "binary" })
+    })
+  }
 
   function loadRuntime() {
     if (!runtimeReady) {
@@ -111,6 +149,7 @@ define([
       if (pendingPlay !== request)
         return
       mLUA.Start()
+      mountCartridgeModules(gwx)
       var encoding = gwx.getCartType() === gwx.TYPE_GWC ? "binary" : "utf8"
       FS.writeFile("/cartridge.lua", gwx.getCode(), { encoding: encoding }, "w+")
       if (mLUA.Exec(loader, true)) {
@@ -121,6 +160,7 @@ define([
       if (pendingPlay !== request)
         return
       mLUA.Stop()
+      clearCartridgeModules()
       mGUI.ShowStartupError(error.message)
     }).finally(function() {
       if (pendingPlay === request) {
@@ -133,6 +173,7 @@ define([
   _this.Reset = function() {
     pendingPlay = undefined
     mLUA.Stop ()
+    clearCartridgeModules()
     mWIG.Reset()
     mMAP.Reset()
     mGUI.Reset()
@@ -148,6 +189,15 @@ define([
     mGPS.Create()
     mMAP.Create()
     mGUI.Create(guidiv)
+    _this.listenTo(mLUA, "evt-luavm-error", function(message) {
+      var reader = mRDR.getReader()
+      _this.Start()
+      mGUI.ShowRuntimeNotice("error", message, reader.getCartType() === reader.TYPE_SRC)
+    })
+    _this.listenTo(mLUA, "evt-luavm-info", function(message) {
+      _this.Start()
+      mGUI.ShowRuntimeNotice("info", message)
+    })
 
     //
     // evt-wig-cartridge-loaded
@@ -159,9 +209,10 @@ define([
       var gwx = mRDR.getReader()
       var loc = mGPS.getPlayerLocation()
 
-      if (gwx.getCartMetaData().locless || (lat === 360 && lng === 360))
+      if (gwx.getCartMetaData().locless || (lat === 360 && lng === 360) ||
+          !Number.isFinite(lat) || !Number.isFinite(lng))
         mLUA.Call("JS2LUA_SetStartingLocation", loc.lat, loc.lng)
-      else if (Number.isFinite(lat) && Number.isFinite(lng))
+      else
         loc = { lat: lat, lng: lng }
 
       mMAP.Start(loc)

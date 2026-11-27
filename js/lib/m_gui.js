@@ -89,9 +89,24 @@ define([
     ShowLuaMsg("error", message)
   }
 
+  _this.ShowRuntimeNotice = function(type, message, looseSource) {
+    message = message.replace(/^\[string "input"\]:\d+:\s*/, "")
+    if (looseSource && /module '[^']+' not found/.test(message))
+      message += "\nTo load a cartridge with helper Lua files, put them together in a GWZ archive."
+    ShowLuaMsg(type, message)
+  }
+
   _this.SetStarting = function(starting) {
     $("#id-splashscreen-play").prop("disabled", starting)
       .text(starting ? "Loading engine…" : "Play")
+  }
+
+  function respondToPopup(popup, callback, value) {
+    if (popup.answered)
+      return
+    popup.answered = true
+    mSCR.Hide(popup)
+    mLUA.Call(callback, value)
   }
 
   /**
@@ -123,21 +138,17 @@ define([
         if (type == "MultipleChoice") {
           choices.forEach(function(choice, index) {
             $("#id-getinput-choice-"+(index+1)).click(function() {
-              mSCR.Hide(gobj)
-              mLUA.Call("JS2LUA_GetInput", choice)
+              respondToPopup(gobj, "JS2LUA_GetInput", choice)
             })
           })
         } else {
-          $("#id-getinput-submit").click(function(event) {
-            var val = $("#id-getinput-value").val()
-            mSCR.Hide(gobj)
-            mLUA.Call("JS2LUA_GetInput", val)
+          $("#id-getinput-submit").click(function() {
+            respondToPopup(gobj, "JS2LUA_GetInput", $("#id-getinput-value").val())
           })
         }
 
-        $("#id-getinput-back").click(function(event) {
-          mSCR.Hide(gobj)
-          mLUA.Call("JS2LUA_GetInput", "<cancelled>")
+        $("#id-getinput-back").click(function() {
+          respondToPopup(gobj, "JS2LUA_GetInput", "<cancelled>")
         })
       }
     }
@@ -176,8 +187,7 @@ define([
           if (buttons[i]) {
             var button = i+1
             $("#id-messagebox-button-"+button).on("click", { id: button }, function(event) {
-              mSCR.Hide(gobj);
-              mLUA.Call("JS2LUA_MessageBox", "Button"+event.data.id)
+              respondToPopup(gobj, "JS2LUA_MessageBox", "Button"+event.data.id)
             })
           }
         }
@@ -478,25 +488,12 @@ define([
     for(var i = LOCATIONSCREEN ; i <= TASKSCREEN ; i++)
       _screens[i].items = []
     mSCR.Clear()
+    $("#id-emul-status").empty().prop("hidden", true)
   }
 
   _this.Create = function(emudiv) {
     mSCR.Create(emudiv)
-
-    //
-    // This event is sent by the mLUA module when the Lua VM is crashed
-    //
-    _this.listenTo(mLUA, "evt-luavm-error", function(msg) {
-      if (msg.match(/\[string "input"\]/) != null) {
-        msg = msg.slice(msg.search(":")+1)
-        msg = msg.slice(msg.search(":")+1)
-      }
-      ShowLuaMsg("error", msg)
-    })
-
-    _this.listenTo(mLUA, "evt-luavm-info", function(msg) {
-      ShowLuaMsg("info", msg)
-    })
+    $(emudiv).append('<p id="id-emul-status" class="wig-text" role="status" hidden></p>')
 
     _this.listenTo(mWIG, "evt-wig-refresh-objects", function(obj) {
       _screens[LOCATIONSCREEN ].items = obj.zones
@@ -513,6 +510,10 @@ define([
 
     _this.listenTo(mWIG, "evt-wig-messagebox", function(txt, media, btn1, btn2) {
       MessageBox(txt, media, btn1, btn2)
+    })
+
+    _this.listenTo(mWIG, "evt-wig-status-text", function(text) {
+      $("#id-emul-status").html(mTPL.richText(text)).prop("hidden", !text)
     })
 
     _this.listenTo(mWIG, "evt-wig-showscreen", function(idxScreen, idxObject) {

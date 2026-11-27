@@ -54,7 +54,7 @@ function jsonencode(obj)
 end
 
 function cleanstr(s)
-  local r = s
+  local r = tostring(s or "")
   r = r:gsub("\r"        , ""    ) -- remove CR
   r = r:gsub("\\n"       , "\n"  ) -- replace '\n' with LF
   r = r:gsub("<[bB][rR]>", "\n"  ) -- replace <BR> with CRLF
@@ -73,22 +73,43 @@ end
 -----------------------------------------------------------------------------
 -- J S --> L U A
 -----------------------------------------------------------------------------
-local __input_obj = nil
-function JS2LUA_GetInput(arg)
-   if __input_obj then
-    local tmp = __input_obj
-    __input_obj = nil
-    tmp:GetInput(arg)
+local popups = {}
+local respondingToPopup = false
+
+local function showPopup()
+  local popup = popups[1]
+  if popup then
+    js.run("mWIG." .. popup.method .. "(" .. jsonencode(popup.data) .. ")")
   end
 end
 
-local __messagebox_callback = nil
-function JS2LUA_MessageBox(arg)
-  if __messagebox_callback then
-    local tmp = __messagebox_callback
-    __messagebox_callback = nil
-    tmp(arg)
+local function queuePopup(method, data, callback)
+  popups[#popups+1] = { method = method, data = data, callback = callback }
+  if #popups == 1 and not respondingToPopup then
+    showPopup()
   end
+end
+
+local function respondToPopup(method, value)
+  local popup = popups[1]
+  if not popup or popup.method ~= method then
+    return
+  end
+  table.remove(popups, 1)
+  respondingToPopup = true
+  if popup.callback then
+    popup.callback(value)
+  end
+  respondingToPopup = false
+  showPopup()
+end
+
+function JS2LUA_GetInput(arg)
+  respondToPopup("GetInput", arg)
+end
+
+function JS2LUA_MessageBox(arg)
+  respondToPopup("MessageBox", arg)
 end
 
 function JS2LUA_SetPlayerName(name)
@@ -101,8 +122,7 @@ function JS2LUA_SetPlayerLocation(lat, lng, accuracy)
 end
 
 function JS2LUA_SetStartingLocation(lat, lng)
-  Player.Cartridge.StartingLocation.latitude  = lat
-  Player.Cartridge.StartingLocation.longitude = lng
+  Player.Cartridge.StartingLocation = Wherigo.ZonePoint(lat, lng, 0)
 end
 
 function JS2LUA_RefreshLocation(accuracy)
@@ -153,7 +173,21 @@ function JS2LUA_TimerTick(idx)
 end
 
 function JS2LUA_StartCartridge()
+  -- Some exports add individual commands to the Commands table, bypassing
+  -- the engine's setter that assigns an owner and registers command indices.
+  for _, class in ipairs({"ZCharacter", "ZItem", "Zone"}) do
+    for _, object in ipairs(Player.Cartridge:GetAllOfType(class)) do
+      if type(object.AddCommand) == "function" then
+        for keyword, command in pairs(object.Commands) do
+          if command.Owner == nil then
+            object:AddCommand(keyword, command)
+          end
+        end
+      end
+    end
+  end
   Player.Cartridge:Start()
+  __refresh_objects()
 end
 
 -----------------------------------------------------------------------------
@@ -173,25 +207,23 @@ function  LUA2JS_CartridgeEvent(event)
 end
 
 function LUA2JS_GetInput(item)
-  __input_obj = item
   local obj = {
     txt     = cleanstr(item.Text) ,
     media   = mediaidx(item.Media),
     type    = item.InputType      ,
     choices = item.Choices
   }
-  js.run("mWIG.GetInput("..jsonencode(obj)..")")
+  queuePopup("GetInput", obj, function(value) item:GetInput(value) end)
 end
 
 function LUA2JS_MessageBox(Text, Media, Btn1, Btn2, wrapper)
-  __messagebox_callback = wrapper
   local obj = {
     txt   = cleanstr(Text),
     media = Media         ,
     btn1  = Btn1          ,
     btn2  = Btn2
   }
-  js.run("mWIG.MessageBox("..jsonencode(obj)..")")
+  queuePopup("MessageBox", obj, wrapper)
 end
 
 function LUA2JS_ShowScreen(idxScreen, idxObject)
@@ -292,6 +324,9 @@ function LUA2JS_RefreshObjects(obj)
 end
 
 function __refresh_objects()
+  if not Player or not Player.Cartridge then
+    return
+  end
   local _zones = {}
   for _,v in ipairs(Player:GetActiveVisibleZones()) do
     table.insert(_zones, toObject(v, true))
@@ -465,7 +500,7 @@ WIGInternal.MediaEvent = function(event, mediaObj)
 end
 
 WIGInternal.ShowStatusText = function(text)
-  print("ERROR", "ShowStatusText", text, "(not implemented)")
+  js.run("mWIG.StatusText("..jsonencode({text = cleanstr(text)})..")")
 end
 
 WIGInternal.ShowScreen = function(screenIdx, idxObj)

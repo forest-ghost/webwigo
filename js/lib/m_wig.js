@@ -55,10 +55,6 @@ define([
     * @method   Create
     */
   _this.Create = function() {
-    $("#id-webwigo-play-audio").off("click.webwigoAudio").on("click.webwigoAudio", function() {
-      if (_audioRequest)
-        playAudio(_audioRequest)
-    })
     _this.listenTo(mLUA, "evt-luavm-error evt-luavm-info", function() {
       _this.Reset()
     })
@@ -109,23 +105,44 @@ define([
     _timers.delete(timerid)
   }
 
+  function updateAudioToggle() {
+    var blocked = _audioRequest && _audioRequest.blocked
+    var enabled = !_audio.muted && !blocked
+    $("#id-webwigo-audio-toggle")
+      .attr("aria-pressed", String(enabled))
+      .attr("title", blocked ? "Enable cartridge sound" : enabled ? "Turn sound off" : "Turn sound on")
+      .find("i").toggleClass("fa-volume-up", enabled).toggleClass("fa-volume-off", !enabled)
+  }
+
+  $(document).on("click", "#id-webwigo-audio-toggle", function() {
+    if (_audioRequest && _audioRequest.blocked) {
+      _audio.muted = false
+      playAudio(_audioRequest)
+    } else {
+      _audio.muted = !_audio.muted
+      updateAudioToggle()
+    }
+  })
+
   function playAudio(request) {
     _audio.play().then(function() {
-      if (_audioRequest === request)
-        $("#id-webwigo-audio-retry").prop("hidden", true)
+      if (_audioRequest === request) {
+        request.blocked = false
+        updateAudioToggle()
+      }
     }).catch(function(error) {
       if (_audioRequest !== request)
         return
-      if (error.name === "NotAllowedError")
-        $("#id-webwigo-audio-retry").prop("hidden", false)
-      else
+      request.blocked = error.name === "NotAllowedError"
+      updateAudioToggle()
+      if (!request.blocked)
         console.warn("Cartridge audio could not play:", error.message)
     })
   }
 
   _this.StopAudio = function() {
     _audioRequest = undefined
-    $("#id-webwigo-audio-retry").prop("hidden", true)
+    updateAudioToggle()
     if (_audio.hasAttribute("src")) {
       _audio.pause()
       _audio.removeAttribute("src")
@@ -139,19 +156,32 @@ define([
     var request = {}
     _audioRequest = request
     var media = _medias[id]
-    var resource = media && media.resources.find(function(file) {
-      return reader.isSound(file.Filename)
+    var filenames = reader.getCartType() === reader.TYPE_GWC ? [id] :
+      (media && media.resources || []).map(function(file) {
+        return file.Filename
+      }).filter(function(filename) {
+        return typeof filename === "string" && reader.isSound(filename)
+      })
+    // Prefer recorded audio when an archive also includes a Garmin tone.
+    filenames.sort(function(left, right) {
+      return /\.fdl$/i.test(left) - /\.fdl$/i.test(right)
     })
-    var filename = reader.getCartType() === reader.TYPE_GWC ? id : resource && resource.Filename
 
-    if (filename != null) {
-      reader.getMediaData(filename, function(url) {
-        if (url && _audioRequest === request) {
+    function playNext(index) {
+      if (index < filenames.length && _audioRequest === request) {
+        reader.getMediaData(filenames[index], function(url) {
+          if (_audioRequest !== request)
+            return
+          if (!url) {
+            playNext(index+1)
+            return
+          }
           _audio.src = url
           playAudio(request)
-        }
-      })
+        })
+      }
     }
+    playNext(0)
   }
 
   /**
@@ -241,6 +271,10 @@ define([
   _this.MessageBox = function(obj) {
     var m = parseJSON(obj)
     _this.trigger("evt-wig-messagebox", m.txt, m.media, m.btn1, m.btn2)
+  }
+
+  _this.StatusText = function(obj) {
+    _this.trigger("evt-wig-status-text", parseJSON(obj).text)
   }
 
   _this.ShowScreen = function(idxScreen, idxObject) {

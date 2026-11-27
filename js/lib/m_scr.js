@@ -142,7 +142,8 @@ define([
     if (obj) {
       dump("H>>>", "hide ("+gobj(obj).attr("id")+")")
       gobj(obj).remove()
-      set(level(obj), null)
+      if (get(level(obj)) === obj)
+        set(level(obj), null)
       refresh()
       dump("H<<<")
     }
@@ -182,6 +183,7 @@ define([
     if (level) {
       r = clear(level)
     } else {
+      _queue.length = 0
       for(var i = 0 ; i < NLEVELS ; i++)
         r = r | clear(i)
     }

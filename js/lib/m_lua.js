@@ -21,6 +21,9 @@ define([
 
   var _this    = {}
   var _running = false
+  var _callDepth = 0
+  var _closePending = false
+  var _errorPending
 
   /**
     * Starts Lua VM
@@ -43,8 +46,11 @@ define([
     */
   _this.Stop = function() {
     if (_running) {
-      Lua.stop()
       _running = false
+      if (_callDepth)
+        _closePending = true
+      else
+        Lua.stop()
     }
   }
 
@@ -72,18 +78,32 @@ define([
     * @param    bool - true if stop on error is required (= false for console)
     */
   _this.Exec = function(luafile, stopOnError) {
-    if (_running) {
+    if (!_running)
+      return false
+
+    _callDepth++
+    try {
       var errmsg = Pointer_stringify(Lua.exec(luafile))
-      if (errmsg != 0) {
-        if (stopOnError) {
-          mLUA.Stop()
-          _this.trigger("evt-luavm-error", errmsg)
-        }
-        return false
+      if (errmsg && stopOnError && _running) {
+        _errorPending = errmsg
+        _this.Stop()
       }
-      return true
+      return !errmsg && _running
+    } finally {
+      // Lua can call JavaScript, which in turn calls Lua. The outer VM call
+      // must unwind before the underlying Lua state can be closed.
+      if (--_callDepth === 0) {
+        if (_closePending) {
+          _closePending = false
+          Lua.stop()
+        }
+        if (_errorPending !== undefined) {
+          var error = _errorPending
+          _errorPending = undefined
+          _this.trigger("evt-luavm-error", error)
+        }
+      }
     }
-    return false
   }
 
   /**

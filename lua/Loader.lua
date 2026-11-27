@@ -101,12 +101,18 @@
 -------------------------------------------------------------------------------
 -- C A R T R I D G E  L O A D E R
 -------------------------------------------------------------------------------
+local Wherigo = require("Wherigo")
+Player = Wherigo.Player
+package.path = package.path .. ";/cartridge-modules/?.lua;/cartridge-modules/?/init.lua"
 cart = dofile("cartridge.lua")
 --if _protected() then
 --  _suicide()
 --end
 --
 EnvProtect()
+if type(cart) ~= "table" or type(cart.GetAllOfType) ~= "function" then
+  error("The Lua source did not return a Wherigo cartridge.")
+end
 Player.Cartridge = cart
 
 for _,v in ipairs(cart:GetAllOfType("ZMedia")) do

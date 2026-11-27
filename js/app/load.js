@@ -24,6 +24,23 @@ define([
 
   var _handle = undefined
   var _params = undefined
+  var loadErrors = {
+    ERR_GWZ_OR_GWC_OR_LUA_FILE_EXPECTED: "Choose a .gwc, .gwz, or .lua cartridge file.",
+    ERR_CARTRIDGE_UNZIP: "This GWZ could not be opened as a ZIP archive.",
+    ERR_LUA_SOURCE_NOT_FOUND: "This GWZ does not contain a Lua source file.",
+    ERR_CARTRIDGE_NAME_NOT_FOUND: "No Wherigo cartridge was found in the Lua source.",
+    ERR_MULTIPLE_CARTRIDGES: "This GWZ contains more than one cartridge source. Keep one cartridge entry point per archive.",
+    ERR_BAD_SIGNATURE: "This file does not have a valid GWC header.",
+    ERR_SHORT_FILE: "This GWC is incomplete or has an invalid object table.",
+    ERR_LUA_CHUNK_NOT_FOUND: "This GWC does not contain a cartridge program.",
+    ERR_LUA_CHUNK_FORMAT: "This GWC uses a Lua bytecode format WebWigo does not support.",
+    ERR_LUA_CHUNK_INVALID: "The compiled Lua program in this GWC is incomplete or invalid.",
+    ERR_UNKNOWN_ERROR: "The browser could not read the cartridge file.",
+    ERR_FILE_NOT_FOUND: "The server could not find the cartridge.",
+    ERR_READ_ERROR: "The server could not return the cartridge.",
+    ERR_UNEXPECTED_ERROR: "The browser could not download the cartridge.",
+    ERR_READ_TIMEOUT: "Downloading the cartridge took too long."
+  }
 
   function isURI() {
     return (typeof _handle == "string")
@@ -73,6 +90,7 @@ define([
       }
     },
     reload: function() {
+      $("#id-load-err").hide()
       this._read()
     },
     toggle: function() {
@@ -138,7 +156,8 @@ define([
             //  $("#id-load-loc"    ).show()
             }
             _handle = mRDR.getHandle()
-            $("#id-load-err-msg").html(msg)
+            var code = String(msg).split("(")[0]
+            $("#id-load-err-msg").text(loadErrors[code] || msg)
             $("#id-load-err"    ).show()
           }
         )

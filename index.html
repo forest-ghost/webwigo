@@ -20,6 +20,7 @@
 
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <title>webwigo</title>
     <meta name="author" content="Nicolas Bertin"/>
     <meta name="description" content="webwigo - the online Wherigo&copy; emulator"/>
@@ -28,12 +29,13 @@
     <link rel="stylesheet" type="text/css" href="import.css"/>
 
     <!-- project libraries used by (nearly) all modules -->
-    <script src="lib/jquery-1.11.2.min.js"></script>
+    <script src="lib/jquery-3.7.1.min.js"></script>
+    <script src="lib/dompurify.min.js"></script>
     <script src="lib/underscore-min.js"></script>
     <script src="lib/backbone-min.js"></script>
-    <script src="lib/js/bootstrap.min.js"></script>
+    <script src="lib/js/bootstrap-3.4.1.min.js"></script>
     <script src="lib/jasny-bootstrap.min.js"></script>
-    <script src="lib/jquery-ui.min.js"></script>
+    <script src="lib/jquery-ui-1.14.2.min.js"></script>
     <script src="lib/jquery.dialogextend.min.js"></script>
     <script src="lib/jquery.slimscroll.min.js"></script>
     <script src="lib/jquery.fullPage.min.js"></script>
@@ -98,17 +100,17 @@
           <a href="#map"><i class="fa fa-map-o" title="Map"></i></a>
         </li>
         <li>
-          <a id="id-tab-btn-playstop" class="disabled"><i class="fa fa-play" title="Play/Stop"></i></a>
+          <button type="button" id="id-tab-btn-playstop" class="menu-action disabled" aria-label="Play cartridge" disabled><i class="fa fa-play" aria-hidden="true" title="Play/Stop"></i></button>
         </li>
         <li>|</li>
         <li>
-          <a id="id-tab-btn-load"><i class="fa fa-folder-open-o" title="Load"></i></a>
+          <button type="button" id="id-tab-btn-load" class="menu-action" aria-label="Load cartridge"><i class="fa fa-folder-open-o" aria-hidden="true" title="Load"></i></button>
         </li>
         <li>
-          <a id="id-tab-btn-reload" class="disabled"><i class="fa fa-refresh" title="Reload"></i></a>
+          <button type="button" id="id-tab-btn-reload" class="menu-action disabled" aria-label="Reload cartridge" disabled><i class="fa fa-refresh" aria-hidden="true" title="Reload"></i></button>
         </li>
         <li>
-          <a id="id-tab-btn-info" class="disabled"><i class="fa fa-info" title="Cartridge information"></i></a>
+          <button type="button" id="id-tab-btn-info" class="menu-action disabled" aria-label="Cartridge information" disabled><i class="fa fa-info" aria-hidden="true" title="Cartridge information"></i></button>
         </li>
         <li>|</li>
         <li data-menuanchor="code">
@@ -132,6 +134,7 @@
 -->
       </ul>
       <ul id="menu-right" class="menu">
+        <li id="id-webwigo-audio-retry" hidden><button type="button" class="menu-action" id="id-webwigo-play-audio" aria-label="Play cartridge audio"><i class="fa fa-volume-up" aria-hidden="true"></i></button></li>
         <li>
           <a id="id-webwigo-about-link" href="#id-webwigo-about" data-toggle="modal"
              aria-haspopup="dialog" aria-controls="id-webwigo-about">About</a>
@@ -146,7 +149,7 @@
 -->
         <li id="id-menu1-separator" style="display: none;">|</li>
         <li id="id-fullscreen-btn" style="display: none;">
-          <a><i id="id-fullscreen-ico" class="fa fa-expand" title="fullscreen"></i></a>
+          <button type="button" class="menu-action" aria-label="Toggle fullscreen"><i id="id-fullscreen-ico" class="fa fa-expand" aria-hidden="true" title="Fullscreen"></i></button>
         </li>
       </ul>
 
@@ -206,7 +209,7 @@
             <p>
               <a href="https://github.com/forest-ghost/webwigo">Source code</a>
               <span aria-hidden="true"> &middot; </span>
-              <a href="LICENSE">License</a>
+              <a href="https://www.gnu.org/licenses/gpl-3.0.html">License</a>
             </p>
           </div>
         </div>

@@ -15,7 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-@import url("lib/css/bootstrap.min.css");
+@import url("lib/css/bootstrap-3.4.1.min.css");
 @import url("lib/jasny-bootstrap.min.css");
 @import url("lib/jquery-ui.min.css");
 @import url("lib/jquery.fullPage.css");

@@ -16,14 +16,13 @@
 */
 
 define([
-  "string",
   "text!app/tpl/gpsr.html",
   "lib/m_gps",
   "lib/m_map",
   "lib/m_rdr",
   "lib/m_emu",
   "app/app0",
-], function(string, T, mGPS, mMAP, mRDR, mEMU, App) {
+], function(T, mGPS, mMAP, mRDR, mEMU, App) {
 
   var _gpsdata = {
     run: false,
@@ -32,26 +31,16 @@ define([
     acc: undefined
   }
 
-  function _lat(ddd) {
-    if (ddd) {
-      var abs = Math.abs(ddd)
-      var sgn = ((ddd > 0) ? +1 : -1)
-      var deg = abs | 0
-      var min = 60 * (abs % 1)
-      return string.sprintf("%s%02d'%2.3f", ((sgn > 0) ? "N" : "S"), Math.abs(deg), min)
-    }
-    return "..."
-  }
+  function formatCoordinate(value, positive, negative, degreeWidth) {
+    if (!Number.isFinite(value))
+      return "..."
 
-  function _lng(ddd) {
-    if (ddd) {
-      var abs = Math.abs(ddd)
-      var sgn = ((ddd > 0) ? +1 : -1)
-      var deg = abs | 0
-      var min = 60 * (abs % 1)
-      return string.sprintf("%s%03d'%2.3f", ((sgn > 0) ? "E" : "W"), Math.abs(deg), min)
-    }
-    return "..."
+    var thousandthsOfMinute = Math.round(Math.abs(value) * 60000)
+    var degrees = Math.floor(thousandthsOfMinute / 60000)
+    var minutes = (thousandthsOfMinute % 60000) / 1000
+    return (value < 0 ? negative : positive) +
+      String(degrees).padStart(degreeWidth, "0") + "° " +
+      minutes.toFixed(3).padStart(6, "0")
   }
 
   function _acc(acc) {
@@ -111,12 +100,15 @@ define([
     },
 
     render: function() {
+      var focused = document.activeElement.id === "id-gpsr-toggle-onoff"
       this.$el.html(this.template({
         running  :      _gpsdata.run ,
-        latitude : _lat(_gpsdata.lat),
-        longitude: _lng(_gpsdata.lng),
+        latitude : formatCoordinate(_gpsdata.lat, "N", "S", 2),
+        longitude: formatCoordinate(_gpsdata.lng, "E", "W", 3),
         accuracy : _acc(_gpsdata.acc)
       }))
+      if (focused)
+        $("#id-gpsr-toggle-onoff").focus()
       return this
     },
 

@@ -1,4 +1,4 @@
-<a id="<%= id %>" class="btn btn-info btn-block wig-btn wig-btn-medium">
+<button type="button" id="<%= id %>" class="btn btn-info btn-block wig-btn wig-btn-medium">
   <div class="wig-table">
     <div class="wig-row">
     <%
@@ -26,11 +26,11 @@
         <% if (icon) { %>
           <span><img id="<%= id %>-ico"/></span>&nbsp;
         <% } %>
-          <span><%= name %></span>
+          <span><%- name %></span>
         </p>
         <p class="text-left wig-ellipsis" style="margin-bottom: 0; font-size: 1em;"><%= desc %></p>
       </div>
     </div>
   </div>
-</a>
+</button>
  

@@ -43,10 +43,10 @@ define([
     initialize: function() {
       this.listenTo(mRDR, "evt-gwx-loaded", function(gwx) {
         // enable info button
-        $("#id-tab-btn-info").toggleClass("disabled", false)
+        $("#id-tab-btn-info").removeClass("disabled").prop("disabled", false)
 
         // enable reload button depending on cartridge source (local/remote)
-        $("#id-tab-btn-reload").toggleClass("disabled", mRDR.isRemote())
+        $("#id-tab-btn-reload").toggleClass("disabled", mRDR.isRemote()).prop("disabled", mRDR.isRemote())
       })
 
       if (window.location.search !== "")

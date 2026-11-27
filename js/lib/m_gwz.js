@@ -21,13 +21,18 @@ define([
 ], function(JSZip, mSRC) {
 
   var _wURL = window.webkitURL || window.mozURL || window.URL
+  var mimeTypes = {
+    jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png",
+    gif: "image/gif", bmp: "image/bmp",
+    wav: "audio/wav", mp3: "audio/mpeg", ogg: "audio/ogg"
+  }
 
   var mGWZ = mSRC.extend({
 
     _zip : null,
 
     init: function() {
-      // empty
+      this._mediaURLs = Object.create(null)
     },
 
     _read: function(blob, name, cb_onSuccess, cb_onError) {
@@ -70,13 +75,27 @@ define([
     },
 
     getMediaData: function(filename, cb_onSuccess) {
-      var that = this
-      var zobj = that._zip.file(filename)
-      if (zobj) {
-        var tarr = zobj.asArrayBuffer()
-        var blob = new Blob([tarr], { type: "image/png" })
-        cb_onSuccess(_wURL.createObjectURL(blob))
+      var entry = this._zip.file(filename)
+      if (!entry) {
+        cb_onSuccess("")
+        return
       }
+      if (!this._mediaURLs[filename]) {
+        var extension = filename.split(".").pop().toLowerCase()
+        var blob = new Blob([entry.asArrayBuffer()], {
+          type: mimeTypes[extension] || "application/octet-stream"
+        })
+        this._mediaURLs[filename] = _wURL.createObjectURL(blob)
+      }
+      cb_onSuccess(this._mediaURLs[filename])
+    },
+
+    dispose: function() {
+      var urls = this._mediaURLs
+      Object.keys(urls).forEach(function(filename) {
+        _wURL.revokeObjectURL(urls[filename])
+        delete urls[filename]
+      })
     },
 
     getMediasList: function() {

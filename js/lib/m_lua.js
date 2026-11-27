@@ -79,8 +79,11 @@ define([
           mLUA.Stop()
           _this.trigger("evt-luavm-error", errmsg)
         }
+        return false
       }
+      return true
     }
+    return false
   }
 
   /**
@@ -97,8 +100,11 @@ define([
     if (_running) {
       var args = Array.prototype.slice.call(arguments, 1)
       for(var i = 0 ; i < args.length ; i++)
-        if (typeof args[i] === "string")
-          args[i] = '"' + args[i] + '"'
+        if (typeof args[i] === "string") {
+          args[i] = '"' + args[i].replace(/["\\\x00-\x1f\x7f]/g, function(character) {
+            return "\\" + String(character.charCodeAt(0)).padStart(3, "0")
+          }) + '"'
+        }
       _this.Exec(luafunc+"("+args.join(",")+")", true)
     }
   }

@@ -16,29 +16,6 @@
 */
 
 //
-// Utility function to get (ajax) a file as binary (arraybuffer)
-//
-function __getbinary(uri, cb_onLoad) {
-  var xhr = new XMLHttpRequest()
-  xhr.open('GET', uri, true)
-  xhr.responseType = 'arraybuffer'
-
-  xhr.onload = function(e) {
-    if (this.status == 200)
-      // Conversion to normal array
-      // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Typed_arrays
-      // var result = Array.apply([], new Uint8Array(xhr.response))
-      // Unfortunately, the above method doesn't work in Safari...
-      var uint8a = new Uint8Array(xhr.response)
-      var result = []
-      for(var i = 0 ; i < uint8a.length ; i++)
-        result[i] = uint8a[i]
-      cb_onLoad(result)
-  }
-  xhr.send()
-}
-
-//
 // Emscripten configuration
 //
 var Module = {
@@ -50,22 +27,6 @@ var Module = {
 
   preRun: function() {
     FS.init()
-
-    __getbinary("lua/Wherigo.Engine.luac", function(data) {
-      FS.createDataFile("/", "Wherigo.lua", data, true, false);
-    })
-
-    $.get("lua/WIGInternal.lua", function(data) {
-      FS.createDataFile("/", "WIGInternal.lua", data, true, false);
-    })
-
-    $.get("lua/dkjson-v2.5.lua", function(data) {
-      FS.createDataFile("/", "dkjson.lua", data, true, false);
-    })
-
-    $.get("lua/base64.lua", function(data) {
-      FS.createDataFile("/", "base64.lua", data, true, false);
-    })
   }
 }
 
@@ -79,6 +40,37 @@ define([
 ], function(mRDR, mLUA, mWIG, mGPS, mGUI, mMAP) {
 
   var _this = {}
+  var runtimeReady
+  var pendingPlay
+
+  function loadRuntime() {
+    if (!runtimeReady) {
+      var files = [
+        ["Wherigo.Engine.luac", "Wherigo.lua"],
+        ["WIGInternal.lua", "WIGInternal.lua"],
+        ["dkjson-v2.5.lua", "dkjson.lua"],
+        ["base64.lua", "base64.lua"],
+        ["Loader.lua", null]
+      ]
+      runtimeReady = Promise.all(files.map(function(file) {
+        return fetch("lua/" + file[0]).then(function(response) {
+          if (!response.ok)
+            throw new Error("Could not load " + file[0] + " (HTTP " + response.status + ").")
+          return file[1] ? response.arrayBuffer() : response.text()
+        })
+      })).then(function(contents) {
+        files.forEach(function(file, index) {
+          if (file[1])
+            FS.writeFile("/" + file[1], new Uint8Array(contents[index]), { encoding: "binary" })
+        })
+        return contents[contents.length - 1]
+      }).catch(function(error) {
+        runtimeReady = undefined
+        throw error
+      })
+    }
+    return runtimeReady
+  }
 
   //
   // Prints a message on browser console and notify listeners. This method is
@@ -94,7 +86,7 @@ define([
     // not locationless: player location = cartridge location
     var gwx = mRDR.getReader()
     var dat = gwx.getCartMetaData()
-    if (! dat.locless)
+    if (!dat.locless && dat.location)
       mMAP.Start(dat.location)
 
     mGUI.ShowSplashScreen(gwx)
@@ -108,24 +100,38 @@ define([
   }
 
   _this.Play = function() {
-    $.get("lua/Loader.lua", function(loader) {
-      var gwx = mRDR.getReader()
-      gwx.getCode(function(code) {
-        var opt
-        mLUA.Start()
-        if (gwx.getCartType() == gwx.TYPE_GWC)
-          opt = { encoding: 'binary'}
-        else
-          opt = { encoding: 'utf8'  }
-        FS.writeFile("/cartridge.lua", code, opt, "w+")
-        mLUA.Exec(loader, true)
+    var gwx = mRDR.getReader()
+    if (!gwx || pendingPlay)
+      return
+
+    var request = {}
+    pendingPlay = request
+    mGUI.SetStarting(true)
+    loadRuntime().then(function(loader) {
+      if (pendingPlay !== request)
+        return
+      mLUA.Start()
+      var encoding = gwx.getCartType() === gwx.TYPE_GWC ? "binary" : "utf8"
+      FS.writeFile("/cartridge.lua", gwx.getCode(), { encoding: encoding }, "w+")
+      if (mLUA.Exec(loader, true)) {
         mGUI.HideSplashScreen()
         _this.trigger("evt-emu-cartridge-playing")
-      })
+      }
+    }).catch(function(error) {
+      if (pendingPlay !== request)
+        return
+      mLUA.Stop()
+      mGUI.ShowStartupError(error.message)
+    }).finally(function() {
+      if (pendingPlay === request) {
+        pendingPlay = undefined
+        mGUI.SetStarting(false)
+      }
     })
   }
 
   _this.Reset = function() {
+    pendingPlay = undefined
     mLUA.Stop ()
     mWIG.Reset()
     mMAP.Reset()
@@ -149,12 +155,14 @@ define([
     // This event is sent by the mWIG module when the cartridge has been
     // loaded (see lua/Loader.lua / mWIG)
     //
-    _this.listenTo(mWIG, "evt-wig-cartridge-loaded", function() {
+    _this.listenTo(mWIG, "evt-wig-cartridge-loaded", function(lat, lng) {
       var gwx = mRDR.getReader()
       var loc = mGPS.getPlayerLocation()
 
-      if (gwx.getCartMetaData().locless)
+      if (gwx.getCartMetaData().locless || (lat === 360 && lng === 360))
         mLUA.Call("JS2LUA_SetStartingLocation", loc.lat, loc.lng)
+      else if (Number.isFinite(lat) && Number.isFinite(lng))
+        loc = { lat: lat, lng: lng }
 
       mMAP.Start(loc)
       // FIXME

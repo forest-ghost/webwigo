@@ -83,10 +83,11 @@ define([
         if (_terminal == undefined) {
           _terminal = _reset()
           $("#id-term").dialog({
-            dialogClass: "vdlg-margin-top",
+            classes    : { "ui-dialog": "vdlg-margin-top" },
             position   : { at: "left bottom" },
             autoOpen   : true,
-            width      : 800,
+            minWidth   : 0,
+            width      : Math.min(800, Math.max(0, window.innerWidth - 24)),
             title      : "Lua console"
           }).dialogExtend({
             titlebar   : "transparent",

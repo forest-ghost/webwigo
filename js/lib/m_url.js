@@ -20,76 +20,37 @@ define([
 
   var _this = {}
 
-  function _getURLparams(uri) {
-    var vars = []
-    var hash
-
-    var hashes = uri.slice(uri.indexOf('?') + 1).split('&')
-    for(var i = 0; i < hashes.length; i++) {
-      hash = hashes[i].split('=')
-      vars.push(hash[0])
-      vars[hash[0]] = hash[1]
-    }
-    return vars
-  }
-
-  function _getURLparam(uri, name) {
-    return _getURLparams(uri)[name]
-  }
-
-  function _trimslash(s) {
-    if (s) {
-      if (s.match(/\/$/))
-        return s.slice(0, -1)
-    }
-    return s
-  }
-
   _this.parse = function(uri) {
-    var cart_provider_name = _trimslash(_getURLparam(uri, "cart_provider_name"))
-    var cart_provider_url  = _trimslash(_getURLparam(uri, "cart_provider_url" ))
-    var cart_url           = _trimslash(_getURLparam(uri, "cart_url"          ))
-    var cart_name          = _trimslash(_getURLparam(uri, "cart_name"         ))
-    var cart_type          = _trimslash(_getURLparam(uri, "cart_type"         ))
+    var query = uri.slice(uri.indexOf("?") + 1).split("#")[0]
+    var params = new URLSearchParams(query)
+    var cartridge = params.get("cart_url")
+    var type = params.get("cart_type")
 
-    if (cart_url == undefined) {
-      return {
-        error: "ERR_CART_URL_NOT_FOUND"
-      }
+    if (!cartridge)
+      return { error: "ERR_CART_URL_NOT_FOUND" }
+    if (!type)
+      return { error: "ERR_CART_TYPE_NOT_FOUND" }
+
+    var url
+    try {
+      url = new URL(cartridge, window.location.href)
+    } catch (error) {
+      return { error: "ERR_INVALID_CART_URL" }
     }
-    cart_url = decodeURIComponent(cart_url)
+    if (url.protocol !== "https:" && url.protocol !== "http:")
+      return { error: "ERR_CART_URL_MUST_USE_HTTP_OR_HTTPS" }
 
-    if (cart_type == undefined) {
-      return {
-        error: "ERR_CART_TYPE_NOT_FOUND"
-      }
-    }
-
-    cart_type = cart_type.toUpperCase()
-    if (cart_type !== "GWZ" && cart_type !== "GWC" && cart_type !== "LUA") {
-      return {
-        error: "ERR_GWZ_OR_GWC_OR_LUA_FILE_EXPECTED"
-      }
-    }
-    if (cart_type === "LUA")
-      cart_type = "SRC"
-
-    if (cart_provider_name != undefined)
-      cart_provider_name = decodeURIComponent(cart_provider_name)
-
-    if (cart_name != undefined)
-      cart_name = decodeURIComponent(cart_name)
-
-    if (cart_provider_url != undefined)
-      cart_provider_url = decodeURIComponent(cart_provider_url)
+    type = type.toUpperCase()
+    if (type !== "GWZ" && type !== "GWC" && type !== "LUA")
+      return { error: "ERR_GWZ_OR_GWC_OR_LUA_FILE_EXPECTED" }
 
     return {
-      error             : false             ,
-      cart_provider_name: cart_provider_name,
-      cart_provider_url : cart_provider_url ,
-      cart_url          : cart_url          ,
-      cart_name         : cart_name         ,
-      cart_type         : cart_type
+      error: false,
+      cart_provider_name: params.get("cart_provider_name") || undefined,
+      cart_provider_url: params.get("cart_provider_url") || undefined,
+      cart_name: params.get("cart_name") || undefined,
+      cart_url: url.href,
+      cart_type: type === "LUA" ? "SRC" : type
     }
   }
 

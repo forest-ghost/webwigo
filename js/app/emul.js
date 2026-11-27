@@ -29,7 +29,8 @@ define([
 
   // toggle play/stop button
   function _toggle_playstop(fl) {
-    $("#id-tab-btn-playstop").toggleClass("disabled", false)
+    $("#id-tab-btn-playstop").removeClass("disabled").prop("disabled", false)
+      .attr("aria-label", fl ? "Play cartridge" : "Stop cartridge")
     $("#id-tab-btn-playstop i")
       .toggleClass("fa-stop" , ! fl)
       .toggleClass("fa-play" ,   fl)
@@ -61,9 +62,11 @@ define([
       this.listenTo(mRDR, "evt-gwx-loaded", function(gwx) {
         if (_emulvdlg == undefined) {
           $("#id-emul").dialog({
-            dialogClass: "vdlg-margin-top",
-            position   : { at: "right top" },
-            minWidth   : 400,
+            classes    : { "ui-dialog": "vdlg-margin-top" },
+            position   : { my: "right top", at: "right top+48", of: window },
+            minWidth   : 0,
+            width      : Math.min(400, Math.max(0, window.innerWidth - 24)),
+            maxHeight  : Math.max(120, window.innerHeight - 60),
             title      : "Emulator"
           }).dialogExtend({
             titlebar   : "transparent",

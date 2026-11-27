@@ -16,8 +16,9 @@
 */
 
 define([
-  "lib/m_gwx"
-], function(mGWX) {
+  "lib/m_gwx",
+  "lib/m_text"
+], function(mGWX, decodeByteString) {
 
   var mSRC = mGWX.extend({
 
@@ -25,25 +26,7 @@ define([
     },
 
     _codeCleanup: function(txt) {
-      var t
-      //
-      // detect BOM and remove it if necessary
-      // http://en.wikipedia.org/wiki/Byte_order_mark
-      //
-      if ((txt.charCodeAt(0) == 0xef) && (txt.charCodeAt(1) == 0xbb) && (txt.charCodeAt(2) == 0xbf)) {
-        t = txt.substring(3)
-      } else {
-        t = txt
-      }
-
-      var m = t.match(/=[\s]*\[\[[\s\S]*?\]\]/mg)
-      if (m != null) {
-        for(var i = 0 ; i < m.length; i++) {
-          if (m[i].search(/"/) != -1)
-            t = t.replace(m[i], m[i].replace(/"/g, "'"))
-        }
-      }
-      return t
+      return decodeByteString(txt)
     },
 
     _codeCartVariableName: function(txt) {
@@ -131,13 +114,16 @@ define([
         return (code.match(r) != null)
       }
       function getStartLocation(cart, code) {
-        var r = new RegExp(cart+"\\.StartingLocation[\\s]*=[\\s]*?ZonePoint\\(.+?\\)")
+        var r = new RegExp(cart+"\\.StartingLocation\\s*=\\s*(?:Wherigo\\.)?ZonePoint\\s*\\([^)]+\\)")
         var m = code.match(r)
         if (m != null) {
           m = m[0].match(/\(.+?\)/)
           m = m[0].substr(1, m[0].length-1)
           m = m.split(",")
-          return { lat: parseFloat(m[0]), lng: parseFloat(m[1]) }
+          var lat = Number(m[0])
+          var lng = Number(m[1])
+          if (Number.isFinite(lat) && Number.isFinite(lng))
+            return { lat: lat, lng: lng }
         }
         return undefined
       }

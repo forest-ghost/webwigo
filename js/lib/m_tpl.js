@@ -33,6 +33,15 @@ define([
 
   var _this = {}
 
+  _this.richText = function(value) {
+    return DOMPurify.sanitize(value == null ? "" : String(value), {
+      ALLOWED_TAGS: ["a", "b", "br", "em", "i", "li", "ol", "p", "span", "strong", "u", "ul"],
+      ALLOWED_ATTR: ["href", "title"],
+      ALLOW_DATA_ATTR: false,
+      ALLOW_ARIA_ATTR: false
+    })
+  }
+
   // templates
   _this.luamsg = luamsg
   _this.splash = splash

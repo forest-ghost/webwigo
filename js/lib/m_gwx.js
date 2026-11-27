@@ -41,6 +41,8 @@ define([
     TYPE_GWZ: 1,
     TYPE_SRC: 2,
 
+    dispose: function() {},
+
     _read: function(blob, name, cb_onSuccess, cb_onError) {
       throw "VIRTUAL: _read()"
     },

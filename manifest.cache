@@ -54,13 +54,14 @@ js/lib/m_gwc.js
 js/lib/m_url.js
 js/lib/m_gwx.js
 js/lib/m_wig.js
+js/lib/m_text.js
 js/lib/m_tpl.js
 js/lib/m_lua.js
 js/lib/m_gui.js
 js/lib/ok.png
 js/lib/m_rdr.js
 js/boot.js
-lib/jquery-ui.min.js
+lib/jquery-ui-1.14.2.min.js
 lib/prism.css
 lib/backbone-min.js
 lib/tinyterm.min.js
@@ -74,7 +75,8 @@ lib/themes/solarized.min.css
 lib/themes/solarized.css
 lib/themes/alien.css
 lib/themes/matrix.css
-lib/jquery-1.11.2.min.js
+lib/jquery-3.7.1.min.js
+lib/dompurify.min.js
 lib/underscore-min.map
 lib/jquery.fullPage.min.js
 lib/jquery-ui.min.css
@@ -122,7 +124,7 @@ lib/leaflet.awesome-markers.min.js
 lib/jquery.mousewheel-min.js
 lib/css/font-awesome.min.css
 lib/css/bootstrap.css
-lib/css/bootstrap.min.css
+lib/css/bootstrap-3.4.1.min.css
 lib/css/bootstrap-theme.min.css
 lib/css/bootstrap-theme.css
 lib/css/bootstrap.css.map
@@ -130,7 +132,7 @@ lib/css/bootstrap-theme.css.map
 lib/prism.js
 lib/jszip.min.js
 lib/js/bootstrap.js
-lib/js/bootstrap.min.js
+lib/js/bootstrap-3.4.1.min.js
 lib/js/npm.js
 lib/fonts/fontawesome-webfont.svg
 lib/fonts/glyphicons-halflings-regular.eot

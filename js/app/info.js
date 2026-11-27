@@ -84,7 +84,7 @@ define([
             data.nsounds++
             continue
           }
-          nothers++
+          data.nothers++
         }
       })
     },

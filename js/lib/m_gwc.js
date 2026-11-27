@@ -16,8 +16,9 @@
 */
 
 define([
-  "lib/m_gwx"
-], function(mGWX) {
+  "lib/m_gwx",
+  "lib/m_text"
+], function(mGWX, decodeByteString) {
 
   var _wURL = window.webkitURL || window.mozURL || window.URL
 
@@ -60,6 +61,7 @@ define([
         data = data + String.fromCharCode(c)
         c    = _read(hdlr, "u8")
       }
+      data = decodeByteString(data)
       break;
     case "buf":
       data = hdlr.data.subarray(offt, offt+size)
@@ -198,6 +200,7 @@ define([
     },
 
     init: function() {
+      this._hdlr = { p_objects: [] }
       if (_objtyp.length == 0) {
         _objtyp[OBJTYP_LUA] = { ext: "lua", mim: "text/plain" }
         _objtyp[OBJTYP_BMP] = { ext: "bmp", mim: "image/bmp"  }
@@ -280,6 +283,13 @@ define([
       for(var i = 0 ; i < this._hdlr.n_objects ; i++)
         r.push(_filename(this._hdlr.p_objects[i]))
       return r
+    },
+
+    dispose: function() {
+      this._hdlr.p_objects.forEach(function(object) {
+        if (typeof object.buf === "string")
+          _wURL.revokeObjectURL(object.buf)
+      })
     },
 
     canSeeMedias: function() {

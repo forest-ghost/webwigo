@@ -95,6 +95,22 @@ li > a {
     color: #444;
 }
 
+.menu-action {
+    background: transparent;
+    border: 0;
+    color: inherit;
+    line-height: inherit;
+    padding: 0;
+}
+
+.menu li .menu-action:hover:not(:disabled) {
+    color: #fff;
+}
+
+.menu-action.disabled {
+    color: #3083ca;
+}
+
 .menu li {
     display: inline-block;
 }
@@ -160,7 +176,36 @@ li > a {
 
 /* Dialogs */
 .vdlg-margin-top {
-    margin-top: 48px;
+    max-width: calc(100% - 24px);
+}
+
+@media (max-width: 700px) {
+    #header {
+        display: flex;
+        justify-content: space-between;
+        font-size: 16px;
+    }
+
+    #menu-left, #menu-right {
+        float: none;
+        white-space: nowrap;
+    }
+
+    #menu-left li, #menu-right li {
+        padding: 0 3px;
+    }
+
+    #id-tab-gpsr-toaster, #id-tab-load-toaster, #id-tab-info-toaster {
+        box-sizing: border-box;
+        left: 8px;
+        max-width: calc(100% - 16px);
+    }
+
+    #id-tab-gpsr-toaster {
+        padding-left: 8px;
+        padding-right: 8px;
+        font-size: 14px;
+    }
 }
 
 /* Slides */

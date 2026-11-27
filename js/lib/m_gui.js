@@ -41,7 +41,9 @@ define([
       object: $(_.template(mTPL.luamsg)(data)),
       level : mSCR.LEVEL_ERR,
       update: null,
-      onshow: null
+      onshow: function() {
+        $("#id-lua-notice-ok").click(function() { mSCR.Hide(gobj) })
+      }
     }
     mSCR.Show(gobj)
   }
@@ -56,8 +58,8 @@ define([
       version  : meta.version     ,
       author   : meta.author      ,
       company  : meta.company     ,
-      desc     : meta.desc        ,
-      locdesc  : meta.locdesc     ,
+      desc     : mTPL.richText(meta.desc)    ,
+      locdesc  : mTPL.richText(meta.locdesc) ,
       locless  : meta.locless     ,
       location : meta.location
     }
@@ -83,6 +85,15 @@ define([
     mSCR.Hide(mSCR.LEVEL_INI)
   }
 
+  _this.ShowStartupError = function(message) {
+    ShowLuaMsg("error", message)
+  }
+
+  _this.SetStarting = function(starting) {
+    $("#id-splashscreen-play").prop("disabled", starting)
+      .text(starting ? "Loading engine…" : "Play")
+  }
+
   /**
     * Displays an InputBox.
     *
@@ -98,7 +109,7 @@ define([
     var data = {
       id      : "id-getinput",
       media   : media        ,
-      txt     : txt          ,
+      txt     : mTPL.richText(txt),
       type    : type         ,
       choices : choices
     }
@@ -110,12 +121,12 @@ define([
         mTPL.setimage(data)
 
         if (type == "MultipleChoice") {
-          for(var i = 0 ; i < choices.length ; i++) {
-            $("#id-getinput-choice-"+(i+1)).click(function(event) {
+          choices.forEach(function(choice, index) {
+            $("#id-getinput-choice-"+(index+1)).click(function() {
               mSCR.Hide(gobj)
-              mLUA.Call("JS2LUA_GetInput", $(this).html())
+              mLUA.Call("JS2LUA_GetInput", choice)
             })
-          }
+          })
         } else {
           $("#id-getinput-submit").click(function(event) {
             var val = $("#id-getinput-value").val()
@@ -149,7 +160,7 @@ define([
     var data = {
       id    : "id-messagebox",
       media : media          ,
-      text  : text           ,
+      text  : mTPL.richText(text),
       btn1  : btn1           ,
       btn2  : btn2
     }
@@ -204,19 +215,16 @@ define([
         ListScreen(idxScreen)
         break
       case DETAILSCREEN   :
-        var foundidx = undefined
-        var items = _screens[INVENTORYSCREEN].items
-        for(var i = 0 ; (i < items.length) ; i++) {
-          if (items[i].idx == idxObject) {
-            foundidx = i
-            break
+        var objidx = Number(idxObject)
+        var detailScreens = [INVENTORYSCREEN, TASKSCREEN, ITEMSCREEN, LOCATIONSCREEN]
+        for(var i = 0 ; i < detailScreens.length ; i++) {
+          var screenidx = detailScreens[i]
+          if (__itembyobjidx(_screens[screenidx].items, objidx) !== undefined) {
+            DetailScreen(screenidx, objidx, false, false)
+            return
           }
         }
-        if (foundidx != undefined) {
-          DetailScreen(INVENTORYSCREEN, i, false, false)
-        } else {
-          console.debug("ERROR: ShowScreen", idxScreen, idxObject, "= item not found!")
-        }
+        console.debug("ERROR: ShowScreen", idxScreen, idxObject, "= item not found!")
         break
       default:
         console.debug("ERROR: ShowScreen", idxScreen, "UNKNOWN")
@@ -299,7 +307,7 @@ define([
               id          : "id-listscreen-items-"+i,
               name        : item.name               ,
               icon        : item.icon               ,
-              desc        : nobr(item.description)  ,
+              desc        : mTPL.richText(nobr(item.description)) ,
               complete    : item.complete           ,
               needrouting : needrouting(screenidx)  ,
               distance    : item.distance           ,
@@ -379,8 +387,8 @@ define([
           data.bearing  = item.bearing
 
           mTPL.setimage(data)
-          $("#"+data.id+"-name").html(data.name)
-          $("#"+data.id+"-desc").html(data.desc)
+          $("#"+data.id+"-name").text(data.name)
+          $("#"+data.id+"-desc").html(mTPL.richText(data.desc))
           mTPL.setrouting(data, mTPL.routxl)
 
           if (cmdwith) {

@@ -25,17 +25,14 @@ define([
   var _this = {}
   var _hdle = undefined
   var _vobj = undefined
-  var _ogwz = new mGWZ()
-  var _ogwc = new mGWC()
-  var _osrc = new mSRC()
+  var _request = 0
 
   _this.read = function(hdle, cb_onProgress, cb_onStatus, cb_onError) {
     var file = undefined
     var type = undefined
 
-    function _cb_onSuccess(gwx) {
-      _this.trigger("evt-gwx-loaded", gwx)
-    }
+    var request = ++_request
+    var reader
 
     // check if handle is an URI or not (= File object)
     if (typeof hdle == "string") {
@@ -62,20 +59,43 @@ define([
     }
     switch(type) {
       case "GWZ":
-        _vobj = _ogwz
+        reader = new mGWZ()
         break
       case "GWC":
-        _vobj = _ogwc
+        reader = new mGWC()
         break
       case "SRC":
-        _vobj = _osrc
+        reader = new mSRC()
         break
       default:
         cb_onError("ERR_GWZ_OR_GWC_OR_LUA_FILE_EXPECTED")
         return
     }
-    _hdle = hdle
-    _vobj.read(file, _cb_onSuccess, cb_onProgress, cb_onStatus, cb_onError)
+    reader.read(file, function(gwx) {
+      if (request !== _request) {
+        gwx.dispose()
+        return
+      }
+      var previous = _vobj
+      _hdle = hdle
+      _vobj = gwx
+      try {
+        _this.trigger("evt-gwx-loaded", gwx)
+      } finally {
+        if (previous)
+          previous.dispose()
+      }
+    }, function(received, total) {
+      if (request === _request)
+        cb_onProgress(received, total)
+    }, function(status) {
+      if (request === _request)
+        cb_onStatus(status)
+    }, function(error) {
+      reader.dispose()
+      if (request === _request)
+        cb_onError(error)
+    })
   }
 
   _this.getReader = function() {

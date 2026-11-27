@@ -110,19 +110,33 @@ function JS2LUA_RefreshLocation(accuracy)
 end
 
 _commands = {}
+
+local function eachCommandTarget(owner, includeNearby, visit)
+  for _, target in ipairs(Player:GetVisibleInventory()) do
+    if target ~= owner and visit(target) then return end
+  end
+  if includeNearby then
+    for _, target in ipairs(Player:GetVisibleObjects()) do
+      if target ~= owner and visit(target) then return end
+    end
+  end
+end
+
 function JS2LUA_ExecuteCommand(objidx, cmdidx, tgtidx)
-  local cmd = _commands[objidx].CommandsArray[cmdidx]
+  local owner = _commands[objidx]
+  local cmd = owner and owner.CommandsArray[cmdidx]
   if cmd then
     if tgtidx then
-      if cmd.WorksWithList then
-        cmd:exec(cmd.WorksWithList[tgtidx])
+      if cmd.WorksWithList and not cmd.WorksWithAll then
+        local target = cmd.WorksWithList[tgtidx]
+        if target then cmd:exec(target) end
       else
-        for _, o in ipairs(Player:GetVisibleInventory()) do
-          if o.ObjIndex == tgtidx then
-            cmd:exec(o)
-            break
+        eachCommandTarget(owner, cmd.WorksWithAll, function(target)
+          if target.ObjIndex == tgtidx then
+            cmd:exec(target)
+            return true
           end
-        end
+        end)
       end
     else
       cmd:exec()
@@ -146,7 +160,9 @@ end
 -- L U A --> J S
 -----------------------------------------------------------------------------
 function LUA2JS_CartridgeLoaded()
-  js.run("mWIG.CartridgeLoaded()")
+  local start = Player.Cartridge.StartingLocation
+  local args = start and { start.latitude, start.longitude } or {}
+  js.run("mWIG.CartridgeLoaded("..convert_args(args)..")")
 end
 
 function  LUA2JS_CartridgeEvent(event)
@@ -237,14 +253,18 @@ function toObject(item, routing)
           targets = {}
         }
         if v.CmdWith then
-          if v.WorksWithList then
+          if v.WorksWithList and not v.WorksWithAll then
             for i, o in ipairs(v.WorksWithList) do
               table.insert(cmd.targets, { name = o.Name, idx = i, ref = o.ObjIndex })
             end
           else
-            for i, o in ipairs(Player:GetVisibleInventory()) do
-              table.insert(cmd.targets, { name = o.Name, idx = o.ObjIndex, ref = o.ObjIndex })
-            end
+            local seen = {}
+            eachCommandTarget(item, v.WorksWithAll, function(o)
+              if not seen[o.ObjIndex] then
+                seen[o.ObjIndex] = true
+                table.insert(cmd.targets, { name = o.Name, idx = o.ObjIndex, ref = o.ObjIndex })
+              end
+            end)
           end
         end
         table.insert(obj.commands, cmd)
@@ -341,6 +361,10 @@ end
 -- Alert
 --
 WIGInternal.NotifyOS = function(cmd)
+  if cmd == "StopSound" then
+    js.run("mWIG.StopAudio()")
+    return
+  end
   --if cmd == "SaveClose" then
   --  return
   --elseif cmd == "DriveTo"   then
@@ -369,6 +393,8 @@ WIGInternal.TimerEvent = function(obj, event)
       obj:OnStart()
     end
   elseif (event == "stop") then
+    _timers[obj.ObjIndex] = nil
+    js.run("mWIG.TimerStop("..convert_args({obj.ObjIndex})..")")
     if obj.OnStop ~= nil then
       obj:OnStop()
     end
@@ -433,7 +459,9 @@ WIGInternal.GetInput = function(obj)
 end
 
 WIGInternal.MediaEvent = function(event, mediaObj)
-  print("ERROR", "MediaEvent", event, mediaObj, "(not implemented)")
+  if event == 1 and mediaObj then
+    js.run("mWIG.PlayAudio("..convert_args({mediaObj.ObjIndex})..")")
+  end
 end
 
 WIGInternal.ShowStatusText = function(text)

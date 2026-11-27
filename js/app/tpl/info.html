@@ -2,38 +2,38 @@
 <% if (remote) { %>
   <div style="display: table-row;">
     <div class="info-label">Provider</div>
-    <div class="info-value"><%= provider %></div>
+    <div class="info-value"><%- provider %></div>
   </div>
 <% } else { %>
   <div style="display: table-row;">
     <div class="info-label">File</div>
-    <div class="info-value"><%= filename %></div>
+    <div class="info-value"><%- filename %></div>
   </div>
 <% } %>
   <% if (carttype == 0) { %>
   <div style="display: table-row;">
     <div class="info-label">Cartridge</div>
-    <div class="info-value"><%= cartname %></div>
+    <div class="info-value"><%- cartname %></div>
   </div>
   <div style="display: table-row;">
     <div class="info-label">Activity</div>
-    <div class="info-value"><%= activity %></div>
+    <div class="info-value"><%- activity %></div>
   </div>
   <div style="display: table-row;">
     <div class="info-label">Version</div>
-    <div class="info-value"><%= version %></div>
+    <div class="info-value"><%- version %></div>
   </div>
   <div style="display: table-row;">
     <div class="info-label">Locationless</div>
-    <div class="info-value"><%= locless %></div>
+    <div class="info-value"><%- locless %></div>
   </div>
   <div style="display: table-row;">
     <div class="info-label">Author</div>
-    <div class="info-value"><%= author %></div>
+    <div class="info-value"><%- author %></div>
   </div>
   <div style="display: table-row;">
     <div class="info-label">Player</div>
-    <div class="info-value"><%= player %></div>
+    <div class="info-value"><%- player %></div>
   </div>
   <% } %>
   <div style="display: table-row;">

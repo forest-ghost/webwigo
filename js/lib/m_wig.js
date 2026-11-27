@@ -19,11 +19,15 @@ define([
   "lib/m_rdr",
   "lib/m_gps",
   "lib/m_map",
-  "lib/m_lua"
-], function(mRDR, mGPS, mMAP, mLUA) {
+  "lib/m_lua",
+  "lib/m_text"
+], function(mRDR, mGPS, mMAP, mLUA, decodeByteString) {
 
   var _this   = {}
   var _medias = []
+  var _timers = new Map()
+  var _audio = new Audio()
+  var _audioRequest
 
   /*
   function b64enc(str) {
@@ -34,7 +38,7 @@ define([
   */
 
   function b64dec(str) {
-    return decodeURIComponent(escape(window.atob(str)))
+    return decodeByteString(window.atob(str))
   }
 
   function parseJSON(str) {
@@ -51,6 +55,13 @@ define([
     * @method   Create
     */
   _this.Create = function() {
+    $("#id-webwigo-play-audio").off("click.webwigoAudio").on("click.webwigoAudio", function() {
+      if (_audioRequest)
+        playAudio(_audioRequest)
+    })
+    _this.listenTo(mLUA, "evt-luavm-error evt-luavm-info", function() {
+      _this.Reset()
+    })
     _this.listenTo(mGPS, "evt-gps-set-player-location", function(loc, accuracy) {
       mLUA.Call("JS2LUA_SetPlayerLocation", loc.lat , loc.lng, accuracy)
     })
@@ -68,6 +79,11 @@ define([
     * @method   Reset
     */
   _this.Reset = function() {
+    _timers.forEach(function(timeout) {
+      clearTimeout(timeout)
+    })
+    _timers.clear()
+    _this.StopAudio()
     _medias = []
   }
 
@@ -81,9 +97,61 @@ define([
     * @param    {object} duration - in milliseconds
     */
   _this.TimerStart = function(timerid, duration) {
-    setTimeout(function() {
+    _this.TimerStop(timerid)
+    _timers.set(timerid, setTimeout(function() {
+      _timers.delete(timerid)
       mLUA.Call("JS2LUA_TimerTick", timerid)
-    }, duration)
+    }, duration))
+  }
+
+  _this.TimerStop = function(timerid) {
+    clearTimeout(_timers.get(timerid))
+    _timers.delete(timerid)
+  }
+
+  function playAudio(request) {
+    _audio.play().then(function() {
+      if (_audioRequest === request)
+        $("#id-webwigo-audio-retry").prop("hidden", true)
+    }).catch(function(error) {
+      if (_audioRequest !== request)
+        return
+      if (error.name === "NotAllowedError")
+        $("#id-webwigo-audio-retry").prop("hidden", false)
+      else
+        console.warn("Cartridge audio could not play:", error.message)
+    })
+  }
+
+  _this.StopAudio = function() {
+    _audioRequest = undefined
+    $("#id-webwigo-audio-retry").prop("hidden", true)
+    if (_audio.hasAttribute("src")) {
+      _audio.pause()
+      _audio.removeAttribute("src")
+      _audio.load()
+    }
+  }
+
+  _this.PlayAudio = function(id) {
+    _this.StopAudio()
+    var reader = mRDR.getReader()
+    var request = {}
+    _audioRequest = request
+    var media = _medias[id]
+    var resource = media && media.resources.find(function(file) {
+      return reader.isSound(file.Filename)
+    })
+    var filename = reader.getCartType() === reader.TYPE_GWC ? id : resource && resource.Filename
+
+    if (filename != null) {
+      reader.getMediaData(filename, function(url) {
+        if (url && _audioRequest === request) {
+          _audio.src = url
+          playAudio(request)
+        }
+      })
+    }
   }
 
   /**
@@ -156,8 +224,8 @@ define([
     _this.trigger("evt-wig-refresh-objects", parseJSON(obj))
   }
 
-  _this.CartridgeLoaded = function() {
-    _this.trigger("evt-wig-cartridge-loaded")
+  _this.CartridgeLoaded = function(lat, lng) {
+    _this.trigger("evt-wig-cartridge-loaded", lat, lng)
   }
 
   _this.CartridgeEvent = function(evt) {

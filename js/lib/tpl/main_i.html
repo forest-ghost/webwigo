@@ -1,7 +1,7 @@
 <%
 count = items.length
 %>
-<a id="<%= id %>" class="btn btn-info btn-block wig-btn wig-btn-large">
+<button type="button" id="<%= id %>" class="btn btn-info btn-block wig-btn wig-btn-large">
   <div class="wig-table">
     <div class="wig-row">
       <div class="wig-cell" style="width: 64px;">
@@ -17,11 +17,11 @@ count = items.length
       } else {
         for(var i = 0 ; i < Math.min(4, count) ; i++)
       %>
-          <p class="wig-text-item" style="font-size: 1em;"><%= items[i] %></p>
+          <p class="wig-text-item" style="font-size: 1em;"><%- items[i] %></p>
       <%
       }
       %>
       </div>
     </div>
   </div>
-</a>
+</button>

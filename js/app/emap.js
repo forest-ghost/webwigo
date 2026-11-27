@@ -159,7 +159,9 @@ define([
           zones[id].setStyle({ color: "red" })
 
         zones[id].setLatLngs(zone.points)
-        zones[id].bindPopup (zone.name+" ("+(zone.visible ? "visible" : "not visible")+")")
+        var label = document.createElement("span")
+        label.textContent = zone.name+" ("+(zone.visible ? "visible" : "not visible")+")"
+        zones[id].bindPopup(label)
 
         if (! map.hasLayer(zones[id]))
           zones[id].addTo(map)

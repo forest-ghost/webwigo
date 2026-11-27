@@ -1,17 +1,13 @@
 <div>
-    <span id="id-gpsr-toggle-onoff">
-        <i class="fa fa-circle" style="color: <% if (running) print("green"); else print("red") %>">
-        &nbsp;
-        <span style="color: #444">GPSr is <% if (running) print("on"); else print("off") %></span>
-        </i>
-    </span>
+    <button type="button" class="menu-action" id="id-gpsr-toggle-onoff" aria-pressed="<%= running %>">
+        <i class="fa fa-circle" aria-hidden="true" style="color: <% if (running) print("green"); else print("red") %>"></i>
+        GPSr is <% if (running) print("on"); else print("off") %>
+    </button>
     <br>
     <span>
         <i class="fa fa-location-arrow"></i>
         &nbsp;
-        <span id="id-latitude"><%= latitude %></span>
-        &nbsp;
-        <span id="id-longitude"><%= longitude %></span>
+        <span id="id-latitude"><%= latitude %></span> <span id="id-longitude"><%= longitude %></span>
         &nbsp;&nbsp;&nbsp;
         <i class="fa fa-wifi"></i>
         &nbsp;

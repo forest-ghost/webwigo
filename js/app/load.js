@@ -94,9 +94,9 @@ define([
         if (_params.cart_name == undefined)
           _params.cart_name = "cartridge"
 
-        $("#id-load-rem-src").html(_params.cart_provider_name)
-        $("#id-load-rem-nam").html(_params.cart_name)
-        $("#id-load-rem-typ").html(_params.cart_type)
+        $("#id-load-rem-src").text(_params.cart_provider_name)
+        $("#id-load-rem-nam").text(_params.cart_name)
+        $("#id-load-rem-typ").text(_params.cart_type)
       } else {
         $("#id-load-msg").html("Load cartridge from your computer")
         $("#id-load-rem").hide()
@@ -137,7 +137,7 @@ define([
             //  $("#id-load-loc-nam").html(_handle)
             //  $("#id-load-loc"    ).show()
             }
-            _handle = undefined
+            _handle = mRDR.getHandle()
             $("#id-load-err-msg").html(msg)
             $("#id-load-err"    ).show()
           }

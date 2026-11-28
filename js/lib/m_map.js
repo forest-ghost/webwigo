@@ -20,6 +20,15 @@ define([
 ], function(mRDR) {
 
   var _this = {}
+  var showHidden = false
+  var currentZones = new Map()
+
+  _this.showHiddenZones = function(enabled) {
+    showHidden = enabled
+    currentZones.forEach(function(zone) {
+      _this.RefreshZone(zone)
+    })
+  }
 
   _this.setPlayerLocation = function(loc) {
     var bounds  = {
@@ -43,16 +52,16 @@ define([
   // FIXME: evt-map-zone-inserted
   // FIXME: evt-map-zone-removed
   _this.RefreshZone = function(zone) {
-    if (zone.active) {
-      if (zone.visible || mRDR.getReader().canSeeHiddenZones()) {
-        _this.trigger("evt-map-insert-zone", zone)
-      }
+    currentZones.set(zone.idx, zone)
+    if (zone.active && (zone.visible || (showHidden && mRDR.getReader().canSeeHiddenZones()))) {
+      _this.trigger("evt-map-insert-zone", zone)
     } else {
       _this.trigger("evt-map-remove-zone", zone)
     }
   }
 
   _this.Reset = function() {
+    currentZones.clear()
     _this.trigger("evt-map-reset")
   }
 

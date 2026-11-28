@@ -37,8 +37,8 @@ define([
     } catch (error) {
       return { error: "ERR_INVALID_CART_URL" }
     }
-    if (url.protocol !== "https:" && url.protocol !== "http:")
-      return { error: "ERR_CART_URL_MUST_USE_HTTP_OR_HTTPS" }
+    if (url.protocol !== "https:" && !(url.protocol === "http:" && url.origin === window.location.origin))
+      return { error: "ERR_CART_URL_MUST_USE_HTTPS" }
 
     type = type.toUpperCase()
     if (type !== "GWZ" && type !== "GWC" && type !== "LUA")

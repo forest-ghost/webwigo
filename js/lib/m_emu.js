@@ -15,21 +15,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-//
-// Emscripten configuration
-//
-var Module = {
-
-  print: function(msg) {
-    // global routine (see end of module definition)
-    __mEMU_Print(msg)
-  },
-
-  preRun: function() {
-    FS.init()
-  }
-}
-
 define([
   "lib/m_rdr",
   "lib/m_lua",
@@ -42,43 +27,10 @@ define([
   var _this = {}
   var runtimeReady
   var pendingPlay
-  var moduleRoot = "/cartridge-modules"
-  var moduleRootCreated = false
-  var modulesMounted = false
+  var playing = false
 
-  function clearCartridgeModules() {
-    if (modulesMounted) {
-      FS.unmount(moduleRoot)
-      modulesMounted = false
-    }
-  }
-
-  function mountCartridgeModules(reader) {
-    if (!reader.getSourceModules)
-      return
-    var modules = reader.getSourceModules()
-    if (!modules.length)
-      return
-    if (!moduleRootCreated) {
-      FS.mkdir(moduleRoot)
-      moduleRootCreated = true
-    }
-    FS.mount(MEMFS, {}, moduleRoot)
-    modulesMounted = true
-    var directories = new Set()
-    modules.forEach(function(module) {
-      var parts = module.path.split("/")
-      var filename = parts.pop()
-      var directory = moduleRoot
-      parts.forEach(function(part) {
-        directory += "/" + part
-        if (!directories.has(directory)) {
-          FS.mkdir(directory)
-          directories.add(directory)
-        }
-      })
-      FS.writeFile(directory + "/" + filename, module.bytes, { encoding: "binary" })
-    })
+  _this.isPlaying = function() {
+    return playing
   }
 
   function loadRuntime() {
@@ -90,18 +42,22 @@ define([
         ["base64.lua", "base64.lua"],
         ["Loader.lua", null]
       ]
-      runtimeReady = Promise.all(files.map(function(file) {
-        return fetch("lua/" + file[0]).then(function(response) {
+      var sourceDownloads = files.map(function(file) {
+        return fetch(window.webwigoAsset("lua/" + file[0])).then(function(response) {
           if (!response.ok)
             throw new Error("Could not load " + file[0] + " (HTTP " + response.status + ").")
           return file[1] ? response.arrayBuffer() : response.text()
         })
-      })).then(function(contents) {
-        files.forEach(function(file, index) {
-          if (file[1])
-            FS.writeFile("/" + file[1], new Uint8Array(contents[index]), { encoding: "binary" })
-        })
-        return contents[contents.length - 1]
+      })
+      runtimeReady = Promise.all([mLUA.Load(), Promise.all(sourceDownloads)]).then(function(runtime) {
+        var contents = runtime[1]
+        return {
+          vm: runtime[0],
+          loader: contents[contents.length - 1],
+          files: files.slice(0, -1).map(function(file, index) {
+            return { name: file[1], bytes: new Uint8Array(contents[index]) }
+          })
+        }
       }).catch(function(error) {
         runtimeReady = undefined
         throw error
@@ -145,23 +101,34 @@ define([
     var request = {}
     pendingPlay = request
     mGUI.SetStarting(true)
-    loadRuntime().then(function(loader) {
+    _this.trigger("evt-emu-starting")
+    Promise.all([loadRuntime(), gwx.getSourceModules ? gwx.getSourceModules() : []]).then(function(results) {
       if (pendingPlay !== request)
         return
-      mLUA.Start()
-      mountCartridgeModules(gwx)
-      var encoding = gwx.getCartType() === gwx.TYPE_GWC ? "binary" : "utf8"
-      FS.writeFile("/cartridge.lua", gwx.getCode(), { encoding: encoding }, "w+")
-      if (mLUA.Exec(loader, true)) {
-        mGUI.HideSplashScreen()
-        _this.trigger("evt-emu-cartridge-playing")
-      }
+      var runtime = results[0]
+      return mLUA.Start({
+        vm: runtime.vm,
+        files: runtime.files,
+        modules: results[1],
+        encoding: gwx.getCartType() === gwx.TYPE_GWC ? "binary" : "utf8",
+        code: gwx.getCode()
+      }).then(function(started) {
+        if (started && pendingPlay === request)
+          return mLUA.Exec(runtime.loader, true)
+      }).then(function(loaded) {
+        if (loaded && pendingPlay === request) {
+          playing = true
+          mGPS.SetPlaying(true)
+          mGUI.HideSplashScreen()
+          _this.trigger("evt-emu-cartridge-playing")
+        }
+      })
     }).catch(function(error) {
       if (pendingPlay !== request)
         return
       mLUA.Stop()
-      clearCartridgeModules()
       mGUI.ShowStartupError(error.message)
+      _this.trigger("evt-emu-started")
     }).finally(function() {
       if (pendingPlay === request) {
         pendingPlay = undefined
@@ -172,8 +139,9 @@ define([
 
   _this.Reset = function() {
     pendingPlay = undefined
+    playing = false
+    mGPS.SetPlaying(false)
     mLUA.Stop ()
-    clearCartridgeModules()
     mWIG.Reset()
     mMAP.Reset()
     mGUI.Reset()
@@ -189,6 +157,10 @@ define([
     mGPS.Create()
     mMAP.Create()
     mGUI.Create(guidiv)
+    _this.listenTo(mLUA, "evt-lua-print", _this.Print)
+    _this.listenTo(mLUA, "evt-lua-wig", function(method, args) {
+      mWIG[method].apply(mWIG, args)
+    })
     _this.listenTo(mLUA, "evt-luavm-error", function(message) {
       var reader = mRDR.getReader()
       _this.Start()
@@ -205,6 +177,9 @@ define([
     // This event is sent by the mWIG module when the cartridge has been
     // loaded (see lua/Loader.lua / mWIG)
     //
+    _this.listenTo(mWIG, "evt-wig-cartridge-complete", function() {
+      mGUI.ShowCompletion()
+    })
     _this.listenTo(mWIG, "evt-wig-cartridge-loaded", function(lat, lng) {
       var gwx = mRDR.getReader()
       var loc = mGPS.getPlayerLocation()
@@ -236,12 +211,6 @@ define([
       _this.Play()
     })
   }
-
-  //
-  // Adds the "Print" function to the global object so that it can be called
-  // from Emscripten (see Emscripten configuration Module object)
-  //
-  window.__mEMU_Print = _this.Print
 
   // extends module with Backbone Events
   _.extend(_this, Backbone.Events)

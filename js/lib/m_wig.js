@@ -63,7 +63,8 @@ define([
     })
 
     _this.listenTo(mGPS, "evt-gps-accuracy-change", function(accuracy) {
-      mLUA.Call("JS2LUA_RefreshLocation", accuracy)
+      if (Number.isFinite(accuracy))
+        mLUA.Call("JS2LUA_RefreshLocation", accuracy)
     })
   }
 

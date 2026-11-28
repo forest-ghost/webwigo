@@ -16,6 +16,8 @@
 */
 
 require.config({
+  baseUrl: "js",
+  urlArgs: window.webwigoAssetVersion ? "v=" + window.webwigoAssetVersion : undefined,
 
   paths: {
 

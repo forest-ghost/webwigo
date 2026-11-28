@@ -27,6 +27,7 @@ define([
   var player = undefined
   var origin = undefined
   var zones  = []
+  var basemap
 
   function _mapOnPlayerMoveEnd(event) {
     player.setLatLng(
@@ -52,9 +53,35 @@ define([
     map.setView(loc, 16)
     map.setMaxBounds([[-85, -190], [+85, +190]])
 
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    basemap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
-    }).addTo(map)
+    })
+    var basemapEnabled = true
+    try {
+      basemapEnabled = localStorage.getItem("webwigo-basemap") !== "off"
+    } catch (error) {
+      // Storage can be disabled in a browser profile.
+    }
+    if (basemapEnabled)
+      basemap.addTo(map)
+    $("#id-tab-btn-basemap").attr("aria-pressed", basemapEnabled).on("click", function() {
+      basemapEnabled = !basemapEnabled
+      $(this).attr("aria-pressed", basemapEnabled)
+      if (basemapEnabled)
+        basemap.addTo(map)
+      else
+        map.removeLayer(basemap)
+      try {
+        localStorage.setItem("webwigo-basemap", basemapEnabled ? "on" : "off")
+      } catch (error) {
+        // The setting still applies to this tab.
+      }
+    })
+    $("#id-tab-btn-hidden-zones").on("click", function() {
+      var enabled = this.getAttribute("aria-pressed") !== "true"
+      this.setAttribute("aria-pressed", enabled)
+      mMAP.showHiddenZones(enabled)
+    })
 
     L.control.custombutton({
       title   : "Zoom and center map to player location",
@@ -129,6 +156,10 @@ define([
         map.invalidateSize()
       })
 
+      this.listenTo(mMAP, "evt-map-set-player-location", function(loc) {
+        player.setLatLng(loc)
+      })
+
       // mMAP.Setup(location) event
       this.listenTo(mMAP, "evt-map-start", function(loc) {
         player.setLatLng(loc)
@@ -171,7 +202,7 @@ define([
       // mMAP.RefreshZone(zone) event (remove a zone)
       this.listenTo(mMAP, "evt-map-remove-zone", function(zone) {
         var id = zone.idx
-        if (map.hasLayer(zones[id]))
+        if (zones[id] && map.hasLayer(zones[id]))
           map.removeLayer(zones[id])
       })
     },

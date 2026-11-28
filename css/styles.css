@@ -40,7 +40,7 @@ body {
     position  : fixed;
     display   : block;
     width     : 100%;
-    background: #4a94db;
+    background: #28649c;
     z-index   : 9;
 }
 
@@ -64,10 +64,11 @@ body {
 
 /* Left (emulator) and right (social/fullscreen) menus */
 #menu-left {
+    position  : relative;
     float     : left;
     padding   : 0 0 0 8px;
     margin    : 0;
-    z-index   : 70;
+    z-index   : 5001;
     text-align: left;
 }
 
@@ -138,7 +139,7 @@ li > a {
     color                : #444;
     font-size            : 14px;
     line-height          : initial;
-    background-color     : #4a94db;
+    background-color     : #28649c;
     -webkit-border-radius: 0 0 16px 16px;
     border-radius        : 0 0 16px 16px;
     display              : none;
@@ -226,4 +227,137 @@ li > a {
     margin    : 0 auto;
     font-size : 4em;
     text-align: center;
+}
+
+#header, .tab-toaster, #header .menu > li > a {
+    color: #fff;
+}
+
+#header .menu-action:disabled {
+    opacity: .55;
+}
+
+#header .menu-action:focus-visible, #header a:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: -2px;
+}
+
+#header .menu > li > button, #header .menu > li > a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-width: 36px;
+    min-height: 44px;
+}
+
+#header .builder-tools .dropdown-menu {
+    min-width: 178px;
+    color: #27384a;
+}
+
+#header .builder-tools .dropdown-menu li {
+    display: block;
+    padding: 0;
+}
+
+#header .builder-tools .dropdown-menu .menu-action {
+    box-sizing: border-box;
+    color: inherit;
+    width: 100%;
+    min-height: 40px;
+    padding: 0 12px;
+    text-align: left;
+}
+
+#header .builder-tools .dropdown-menu .menu-action:hover:not(:disabled) {
+    color: #163c63;
+    background: #e8f1fa;
+}
+
+#id-player-status {
+    position: fixed;
+    z-index: 10;
+    left: 54px;
+    top: 57px;
+    max-width: calc(100% - 90px);
+    background: #fff;
+    color: #27384a;
+    border-radius: 5px;
+    box-shadow: 0 1px 6px #0004;
+    padding: 8px 12px;
+}
+
+.map-page {
+    box-sizing: border-box;
+    padding: 0;
+}
+
+#id-tab-gpsr-toaster {
+    pointer-events: none;
+    width: auto;
+}
+
+#id-tab-gpsr-toaster button {
+    pointer-events: auto;
+}
+
+@media (max-width: 700px) {
+    #menu-left, #menu-right {
+        display: flex;
+        align-items: center;
+        padding: 0 3px;
+    }
+
+    #menu-left li, #menu-right li {
+        padding: 0 2px;
+    }
+
+    #header .menu > li > button, #header .menu > li > a {
+        min-width: 44px;
+        padding: 0 2px;
+    }
+
+    #header #id-menu1-separator, #header #id-fullscreen-btn {
+        display: none !important;
+    }
+
+    #id-tab-gpsr-toaster {
+        left: 48px;
+    }
+}
+
+@media (max-width: 360px) {
+    #menu-left, #menu-right {
+        padding: 0;
+    }
+
+    #menu-left li, #menu-right li {
+        padding: 0;
+    }
+
+    #header .menu > li > button, #header .menu > li > a {
+        padding: 0;
+    }
+
+    #id-tab-btn-load i {
+        display: none;
+    }
+}
+
+#header .builder-tools .dropdown-menu {
+    max-height: calc(100vh - 48px);
+    max-height: calc(100dvh - 48px);
+    overflow-y: auto;
+}
+
+@media (max-width: 700px) {
+    #id-emap .leaflet-bottom.leaflet-right {
+        top: 68px;
+        bottom: auto;
+    }
+
+    #id-emap .leaflet-control-attribution {
+        margin-top: 0;
+    }
 }

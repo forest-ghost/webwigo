@@ -25,6 +25,11 @@ define([
   var _handle = undefined
   var _params = undefined
   var loadErrors = {
+    ERR_CART_URL_NOT_FOUND: "The shared link is missing a cartridge address.",
+    ERR_CART_TYPE_NOT_FOUND: "The shared link is missing the cartridge file type.",
+    ERR_INVALID_CART_URL: "The shared link does not contain a valid cartridge address.",
+    ERR_CART_URL_MUST_USE_HTTPS: "Use an HTTPS address in a shared cartridge link.",
+    ERR_CARTRIDGE_TOO_LARGE: "The cartridge exceeds the file or expanded archive size limit.",
     ERR_GWZ_OR_GWC_OR_LUA_FILE_EXPECTED: "Choose a .gwc, .gwz, or .lua cartridge file.",
     ERR_CARTRIDGE_UNZIP: "This GWZ could not be opened as a ZIP archive.",
     ERR_LUA_SOURCE_NOT_FOUND: "This GWZ does not contain a Lua source file.",
@@ -78,7 +83,7 @@ define([
         _params = mURL.parse(uri)
         this.show(true)
         if (_params.error) {
-          $("#id-load-err-msg").html(_params.error)
+          $("#id-load-err-msg").text(loadErrors[_params.error] || loadErrors.ERR_UNEXPECTED_ERROR)
           $("#id-load-err"    ).show()
         } else {
           _handle = uri

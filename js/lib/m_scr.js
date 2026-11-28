@@ -132,6 +132,8 @@ define([
       if (obj.onshow != null)
         obj.onshow()
       refresh()
+      if (obj.onvisible && gobj(obj).is(":visible"))
+        obj.onvisible()
       dump("S<<<")
     }
   }
@@ -141,10 +143,13 @@ define([
       obj = get(obj)
     if (obj) {
       dump("H>>>", "hide ("+gobj(obj).attr("id")+")")
+      var ownedFocus = gobj(obj)[0].contains(document.activeElement)
       gobj(obj).remove()
       if (get(level(obj)) === obj)
         set(level(obj), null)
       refresh()
+      if (ownedFocus)
+        $(_scrdiv).find("button:visible:enabled").first().trigger("focus")
       dump("H<<<")
     }
   }

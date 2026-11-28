@@ -24,8 +24,8 @@ define([
   // constants
   var gpstimer_dly = 1000
   var accuracy_min = 2
-  var accuracy_low = 32
-  var accuracy_max = 1024
+  var accuracy_max = 32
+  var playing      = false
 
   // variables
   var gpstimer_tid = undefined
@@ -37,11 +37,10 @@ define([
   }
 
   function gpsTimerUpdate() {
-    if (accuracy == accuracy_min)
-      accuracy = Math.floor((Math.random() * accuracy_low) + accuracy_min)
-    accuracy = Math.floor((Math.random() * accuracy) + accuracy_min)
-
+    accuracy = Math.max(accuracy_min, Math.floor(accuracy / 2))
     _this.trigger("evt-gps-accuracy-change", accuracy)
+    if (accuracy === accuracy_min)
+      clearInterval(gpstimer_tid)
   }
 
   _this.setPlayerLocation = function(loc) {
@@ -60,7 +59,7 @@ define([
     isrunning = true
     _this.trigger("evt-gps-on-off-status", isrunning)
     // start timer and update location/accuracy
-    gpstimer_tid = setInterval(gpsTimerUpdate, gpstimer_dly)
+    _this.SetPlaying(playing)
     _this.setPlayerLocation(currloc)
   }
 
@@ -71,7 +70,16 @@ define([
     // stop timer and update accuracy
     clearInterval(gpstimer_tid)
     accuracy  = accuracy_max
-    _this.trigger("evt-gps-accuracy-change", accuracy)
+    _this.trigger("evt-gps-accuracy-change", undefined)
+  }
+
+  _this.SetPlaying = function(enabled) {
+    playing = enabled
+    clearInterval(gpstimer_tid)
+    accuracy = accuracy_max
+    _this.trigger("evt-gps-accuracy-change", enabled && isrunning ? accuracy : undefined)
+    if (enabled && isrunning)
+      gpstimer_tid = setInterval(gpsTimerUpdate, gpstimer_dly)
   }
 
   _this.OnOff = function() {

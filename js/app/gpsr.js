@@ -100,14 +100,14 @@ define([
     },
 
     render: function() {
-      var focused = document.activeElement.id === "id-gpsr-toggle-onoff"
+      var focused = document.activeElement.id
       this.$el.html(this.template({
         running  :      _gpsdata.run ,
         latitude : formatCoordinate(_gpsdata.lat, "N", "S", 2),
         longitude: formatCoordinate(_gpsdata.lng, "E", "W", 3),
         accuracy : _acc(_gpsdata.acc)
       }))
-      if (focused)
+      if (focused === "id-gpsr-toggle-onoff")
         $("#id-gpsr-toggle-onoff").focus()
       return this
     },

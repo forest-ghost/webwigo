@@ -14,8 +14,9 @@ python3 -m http.server 8000 --bind 127.0.0.1
 On Windows, use `py -3` in place of `python3` if you use the Python launcher.
 Open [http://127.0.0.1:8000/](http://127.0.0.1:8000/) in your browser.
 
-Use the folder icon to load a `.gwc`, `.gwz`, or `.lua` cartridge, then press
-**Play**. Turn on **GPSr** to send player-marker movements to the cartridge.
+Select **Load** to open a .gwc, .gwz, or .lua cartridge, then press **Play**.
+The Lua engine downloads on first Play. Turn on **Simulated GPS** to send
+player movement to the cartridge when you drag the green player marker.
 Supported cartridge audio plays from the loaded file in your browser. Use the
 speaker button in the toolbar to mute or unmute it. If the browser blocks
 automatic playback, the same button starts the sound.
@@ -28,8 +29,32 @@ the complete GWZ archive.
 
 The app runs in the browser without a build step. The page starts at
 `index.html`. Browser code is in `js/`, bundled libraries are in `lib/`, and the
-Wherigo runtime and its Lua bridge are in `lua/`. The UI uses RequireJS,
-Backbone, and Leaflet. The map needs internet access to load OpenStreetMap tiles.
+Wherigo runtime and its Lua bridge are in `lua/`. The UI uses Backbone, Leaflet 1.9.4, RequireJS 2.3.8, and JSZip 3.10.2. OpenStreetMap
+tiles require internet access. Turn off **Basemap** in **Tools** before loading
+a cartridge if you want to test with a blank map and no tile requests.
+
+**Stop** resets the current run and keeps the cartridge loaded. **Reload file**
+rereads the local cartridge. Refreshing the browser clears the play session.
+
+## Deploy through GitHub
+
+Vercel builds the static player from this repository. Push a feature branch
+for a preview. Updates to the production branch deploy automatically. The
+build publishes the player assets and licenses from the dist directory.
+
+## Cloudflare preview
+
+Run the package script from the checkout to prepare the static site in a
+temporary directory. The script prints the path to pass to Cloudflare's cf CLI.
+
+    node tools/package-site.cjs
+    cf deploy <printed-directory> --dry-run
+
+After signing in to the intended Cloudflare account, use the same deploy
+command without the dry-run flag. The configuration names the Worker
+webwigo-preview. The package contains the player files and licenses. Test
+fixtures, local cartridges, draft documents, and environment files stay out
+of the upload.
 
 ## Regression tests
 

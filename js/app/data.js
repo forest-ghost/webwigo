@@ -24,81 +24,78 @@ define([
   var ViewData = Backbone.View.extend({
     el        : $("#id-data"),
     template  : _.template(T),
-    initialize: function(options) {
-      // check if section is active on initialization.
-      if ($("#section-data").hasClass("active"))
-        $.fn.fullpage.silentMoveTo(SECTION_HOME)
-
-      // render section on cartridge loaded event
-      this.listenTo(mRDR, "evt-gwx-loaded", function(gwx) {
-        this.render(gwx)
+    initialize: function() {
+      var view = this
+      var button = $("#id-tab-btn-data")
+      button.on("click", function() {
+        $.fn.fullpage.moveTo(SECTION_DATA)
       })
-
-      // fullpage plugin event: section leave
-      this.listenTo(App, "evt-app-on-section-leave", function(srcidx, dstidx, direction) {
-        if (dstidx == SECTION_DATA)
-          if ($("#id-tab-btn-data").hasClass("disabled")) {
-            if (direction === "up")
-              $.fn.fullpage.moveTo(dstidx-1)
-            else
-              $.fn.fullpage.moveTo(dstidx+1)
-          }
+      this.listenTo(mRDR, "evt-gwx-loaded", function(gwx) {
+        this.$el.empty()
+        this.reader = gwx.canSeeMedias() ? gwx : null
+        this.rendered = false
+        button.toggleClass("disabled", !this.reader).prop("disabled", !this.reader)
+      })
+      this.listenTo(App, "evt-app-on-section-loaded", function(anchor, index) {
+        if (index !== SECTION_DATA)
+          return
+        if (!view.reader) {
+          $.fn.fullpage.silentMoveTo(SECTION_HOME)
+          return
+        }
+        if (!view.rendered) {
+          view.rendered = true
+          view.render(view.reader)
+        }
       })
     },
     render: function(gwx) {
-      this.$el.empty()
-      if (gwx.canSeeMedias()) {
-        var rows = 0
-        var cols = 0
-        var that = this
+      var rows = 0
+      var cols = 0
+      var that = this
 
-        $.each(gwx.getMediasList(), function(idx, filename) {
-          if (cols == 0) {
-            rows++
-            that.$el.append(that.template({
-              add: "row",
-              id : "id-data-row-"+rows
-            }))
-          }
-          if (gwx.isCode(filename)) {
-            $("#id-data-row-"+rows).append(that.template({
-              add     : "code",
-              imagesrc: "img/code.png",
+      $.each(gwx.getMediasList(), function(idx, filename) {
+        if (cols == 0) {
+          rows++
+          that.$el.append(that.template({
+            add: "row",
+            id : "id-data-row-"+rows
+          }))
+        }
+        var row = $("#id-data-row-"+rows)
+        if (gwx.isCode(filename)) {
+          row.append(that.template({
+            add     : "code",
+            imagesrc: "img/code.png",
+            filename: filename
+          }))
+        }
+        else
+        if (gwx.isImage(filename)) {
+          gwx.getMediaData(filename, function(src) {
+            row.append(that.template({
+              add     : "image",
+              imagesrc: src,
               filename: filename
             }))
-          }
-          else
-          if (gwx.isImage(filename)) {
-            gwx.getMediaData(filename, function(src) {
-              $("#id-data-row-"+rows).append(that.template({
-                add     : "image",
-                imagesrc: src,
-                filename: filename
-              }))
-            })
-          }
-          else
-          if (gwx.isSound(filename)) {
-            $("#id-data-row-"+rows).append(that.template({
-              add     : "sound",
-              imagesrc: "img/sound.png",
-              filename: filename
-            }))
-          }
-          cols++
-          if (cols == 6)
-            cols = 0
-        })
-        $("#id-tab-btn-data").toggleClass("disabled", false)
-        _.delay(function() {
-          // data will be displayed: force a rebuild to get the scrollbar
-          $.fn.fullpage.reBuild()
-        }, 250)
-      } else {
-        $("#id-tab-btn-data").toggleClass("disabled", true)
-        if ($("#section-data").hasClass("active"))
-          $.fn.fullpage.moveTo(SECTION_HOME)
-      }
+          })
+        }
+        else
+        if (gwx.isSound(filename)) {
+          row.append(that.template({
+            add     : "sound",
+            imagesrc: "img/sound.png",
+            filename: filename
+          }))
+        }
+        cols++
+        if (cols == 6)
+          cols = 0
+      })
+      _.delay(function() {
+        // data will be displayed: force a rebuild to get the scrollbar
+        $.fn.fullpage.reBuild()
+      }, 250)
       return this
     }
   });

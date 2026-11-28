@@ -16,107 +16,101 @@
 */
 
 define([
-  "tinyterm",
+  "require",
   "lib/m_rdr",
   "lib/m_emu",
   "lib/m_lua",
   "app/app0"
-], function(TinyTerm, mRDR, mEMU, mLUA, App) {
+], function(require, mRDR, mEMU, mLUA, App) {
+  var terminal
+  var TinyTerm
+  var running = false
+  var logs = []
+  var consolePanel = $("#id-term")
 
-  var _terminal = undefined
-  var _dlgstate = undefined
-  var _running  = false
-
-  function _tslog(msg) {
-    if (_terminal) {
-      var ts = new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '')
-      _terminal.print(ts + ": " + msg)
-    }
+  function log(message) {
+    var time = new Date().toISOString().slice(11, 19)
+    var line = time + " " + message
+    logs.push(line)
+    if (logs.length > 200)
+      logs.shift()
+    if (terminal)
+      terminal.print(line)
   }
 
-  function _clear() {
-    console.log("Lua console: clear")
-
+  function renderConsole() {
+    consolePanel.empty()
+    terminal = new TinyTerm(consolePanel[0])
+    terminal.autocomplete = function() {}
+    terminal.process = function(command) {
+      if (!command)
+        return
+      if (running)
+        mLUA.Exec(command, false)
+      else
+        log("Play the cartridge before running Lua commands.")
+    }
+    logs.forEach(function(line) { terminal.print(line) })
   }
 
   var ViewTerm = Backbone.View.extend({
-    initialize: function(options) {
-      // check if section is active on initialization.
-      if ($("#section-term").hasClass("active"))
-        $.fn.fullpage.silentMoveTo(SECTION_HOME)
-
-      // fullpage plugin event: section leave
-      this.listenTo(App, "evt-app-on-section-leave", function(srcidx, dstidx, direction) {
-        if (_terminal) {
-          if (srcidx == SECTION_HOME) {
-            _dlgstate = $("#id-term").dialogExtend("state")
-            $("#id-term").dialog("close")
-          }
-          if (dstidx == SECTION_HOME) {
-            $("#id-term").dialog("open")
-            if (_dlgstate === "minimized")
-              $("#id-term").dialogExtend("minimize")
-          }
+    initialize: function() {
+      var button = $("#id-tab-btn-debug").prop("disabled", true)
+      button.on("click", function() {
+        $.fn.fullpage.moveTo(SECTION_HOME)
+        if (terminal) {
+          if (consolePanel.dialog("isOpen"))
+            consolePanel.dialog("close")
+          else
+            consolePanel.dialog("open").dialog("moveToTop")
+          return
         }
+        button.prop("disabled", true)
+        require(["tinyterm"], function(Constructor) {
+          TinyTerm = Constructor
+          ["lib/tinyterm.min.css", "lib/themes/solarized.css"].forEach(function(href) {
+            $("<link>", { rel: "stylesheet", href: window.webwigoAsset(href) }).appendTo("head")
+          })
+          renderConsole()
+          consolePanel.dialog({
+            classes: { "ui-dialog": "vdlg-margin-top" },
+            position: { at: "left bottom" },
+            minWidth: 0,
+            width: Math.min(800, Math.max(0, window.innerWidth - 24)),
+            maxHeight: Math.max(120, window.innerHeight - 60),
+            title: "Lua console"
+          })
+          button.prop("disabled", false)
+        }, function() {
+          button.prop("disabled", false).text("Retry debug console")
+        })
       })
 
-      // when a cartridge file is loaded
-      this.listenTo(mRDR, "evt-gwx-loaded", function(gwx) {
-
-        function _reset() {
-          $("#id-term").empty()
-          var term = new TinyTerm(document.querySelector("#id-term"))
-          term.autocomplete = function(target) {
-          }
-          term.process = function(command) {
-            if (command !== "") {
-              if (_running)
-                mLUA.Exec(command, false)
-              else {
-                _tslog("ERROR: Lua VM is not running (cartridge not started) !")
-              }
-            }
-          }
-          return term
-        }
-
-        if (_terminal == undefined) {
-          _terminal = _reset()
-          $("#id-term").dialog({
-            classes    : { "ui-dialog": "vdlg-margin-top" },
-            position   : { at: "left bottom" },
-            autoOpen   : true,
-            minWidth   : 0,
-            width      : Math.min(800, Math.max(0, window.innerWidth - 24)),
-            title      : "Lua console"
-          }).dialogExtend({
-            titlebar   : "transparent",
-            closable   : false,
-            minimizable: true
-          }).dialogExtend("minimize")
-        } else {
-          _terminal = _reset()
-        }
-        _tslog("cartridge loaded")
+      this.listenTo(App, "evt-app-on-section-leave", function(srcidx) {
+        if (terminal && srcidx === SECTION_HOME)
+          consolePanel.dialog("close")
       })
 
-      this.listenTo(mEMU, "evt-emu-println", function(msg) {
-        _tslog(msg)
+      this.listenTo(mRDR, "evt-gwx-loaded", function() {
+        logs = []
+        if (terminal)
+          renderConsole()
+        log("Cartridge loaded")
+        button.prop("disabled", false)
       })
 
+      this.listenTo(mEMU, "evt-emu-println", log)
       this.listenTo(mEMU, "evt-emu-cartridge-playing", function() {
-        _running = true
+        running = true
       })
-
-      this.listenTo(mEMU, "evt-emu-stopped", function() {
-        _running = false
+      this.listenTo(mEMU, "evt-emu-stopped evt-emu-started", function() {
+        running = false
       })
     }
   })
 
-  // singleton
-  var _instance;
+  var instance
   return function getViewTerm() {
-    return (_instance = (_instance || new ViewTerm()))
+    return instance || (instance = new ViewTerm())
   }
-});
+})

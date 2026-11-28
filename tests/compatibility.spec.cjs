@@ -55,7 +55,7 @@ test("uses the GWZ entry point and loads a bundled Lua module", async ({ page })
   const cartridge = source
     .replace('local cart = wig.ZCartridge()', 'local helper = require("lib.helper")\nlocal cart = wig.ZCartridge()')
     .replace('"Cartridge started"', 'helper.message')
-  await open(page, "package.gwz", archive({
+  await open(page, "package.gwz", await archive({
     "project/cartridge.lua": cartridge,
     "project/lib/helper.lua": 'return { message = "Bundled module loaded" }',
     "unrelated.lua": "return {}",
@@ -70,11 +70,11 @@ test("uses the GWZ entry point and loads a bundled Lua module", async ({ page })
 })
 
 test("gives actionable errors for source-less and ambiguous GWZ files", async ({ page }) => {
-  await select(page, "missing.gwz", archive({ "notes.txt": "Fixture" }))
+  await select(page, "missing.gwz", await archive({ "notes.txt": "Fixture" }))
   const error = page.locator("#id-load-err-msg")
   await expect(error).toBeVisible()
   await expect(error).toHaveText("This GWZ does not contain a Lua source file.")
-  await select(page, "multiple.gwz", archive({ "one.lua": source, "two.lua": source }))
+  await select(page, "multiple.gwz", await archive({ "one.lua": source, "two.lua": source }))
   await expect(error).toHaveText(/more than one cartridge source/)
   await open(page, "valid.lua", source)
 })
@@ -94,7 +94,7 @@ for (const extension of ["gwc", "gwz"]) {
     tone.writeUInt16LE(100, 10)
     const bytes = extension === "gwc"
       ? compiled(fixture("media.luac"), { type: 19, bytes: tone })
-      : archive({
+      : await archive({
         "cartridge.lua": fixture("media.lua").toString().replaceAll("wav", "fdl"),
         "beep.fdl": tone,
       })

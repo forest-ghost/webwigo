@@ -15,127 +15,134 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-define([
-  "luavm"
-], function(luavm) {
+define([], function() {
+  var runtime = {}
+  var worker
+  var running = false
+  var sourceDownload
+  var session = 0
+  var nextRequest = 0
+  var requests = new Map()
+  var bridgeMethods = new Set([
+    "CartridgeLoaded", "CartridgeEvent", "GetInput", "MessageBox", "PlayAudio",
+    "RefreshMedia", "RefreshObjects", "RefreshZone", "ShowScreen",
+    "StatusText", "StopAudio", "TimerStart", "TimerStop"
+  ])
 
-  var _this    = {}
-  var _running = false
-  var _callDepth = 0
-  var _closePending = false
-  var _errorPending
-
-  /**
-    * Starts Lua VM
-    *
-    * @public
-    * @memberof module:mLUA#
-    * @method   Start
-    */
-  _this.Start = function() {
-    Lua.init()
-    _running = true
+  function terminate() {
+    if (worker)
+      worker.terminate()
+    worker = undefined
+    running = false
+    requests.forEach(function(request) {
+      clearTimeout(request.timeout)
+      request.resolve(false)
+    })
+    requests.clear()
   }
 
-  /**
-    * Stops Lua VM
-    *
-    * @public
-    * @memberof module:mLUA#
-    * @method   Stop
-    */
-  _this.Stop = function() {
-    if (_running) {
-      _running = false
-      if (_callDepth)
-        _closePending = true
-      else
-        Lua.stop()
+  function receive(event) {
+    var message = event.data
+    if (event.currentTarget !== worker || !message || message.session !== session)
+      return
+    if (message.type === "wig" && bridgeMethods.has(message.method)) {
+      runtime.trigger("evt-lua-wig", message.method, message.args)
+    } else if (message.type === "print") {
+      runtime.trigger("evt-lua-print", message.text)
+    } else if (message.type === "exit") {
+      runtime.Stop()
+      runtime.trigger("evt-luavm-info", "Cartridge stopped itself.")
+    } else if (message.type === "result") {
+      var request = requests.get(message.id)
+      if (!request)
+        return
+      clearTimeout(request.timeout)
+      requests.delete(message.id)
+      if (message.error && request.fatal) {
+        request.resolve(false)
+        runtime.Stop()
+        runtime.trigger("evt-luavm-error", message.error)
+      } else if (message.error && message.initializing) {
+        request.reject(new Error(message.error))
+        terminate()
+      } else {
+        if (message.error)
+          runtime.trigger("evt-lua-print", message.error)
+        request.resolve(!message.error)
+      }
     }
   }
 
-  /**
-    * Exits the Lua VM (os.exit(n))
-    *
-    * @public
-    * @memberof module:mLUA#
-    * @method   Exit
-    */
-  _this.Exit = function() {
-    _.defer(function() {
-      mLUA.Stop()
-      _this.trigger("evt-luavm-info", "os.exit() called. Cartridge has been stopped.")
+  function send(type, data, fatal) {
+    var id = ++nextRequest
+    return new Promise(function(resolve, reject) {
+      var timeout = setTimeout(function() {
+        terminate()
+        runtime.trigger("evt-luavm-error", "The cartridge did not respond and has been stopped.")
+      }, 10000)
+      requests.set(id, { resolve: resolve, reject: reject, timeout: timeout, fatal: fatal })
+      worker.postMessage({ type: type, session: session, id: id, data: data })
     })
   }
 
-  /**
-    * Executes the specified Lua content (file).
-    *
-    * @public
-    * @memberof module:mLUA#
-    * @method   Exec
-    * @param    {function} luafile - Lua payload to execute
-    * @param    bool - true if stop on error is required (= false for console)
-    */
-  _this.Exec = function(luafile, stopOnError) {
-    if (!_running)
-      return false
-
-    _callDepth++
-    try {
-      var errmsg = Pointer_stringify(Lua.exec(luafile))
-      if (errmsg && stopOnError && _running) {
-        _errorPending = errmsg
-        _this.Stop()
-      }
-      return !errmsg && _running
-    } finally {
-      // Lua can call JavaScript, which in turn calls Lua. The outer VM call
-      // must unwind before the underlying Lua state can be closed.
-      if (--_callDepth === 0) {
-        if (_closePending) {
-          _closePending = false
-          Lua.stop()
-        }
-        if (_errorPending !== undefined) {
-          var error = _errorPending
-          _errorPending = undefined
-          _this.trigger("evt-luavm-error", error)
-        }
-      }
+  runtime.Load = function() {
+    if (!sourceDownload) {
+      sourceDownload = fetch(window.webwigoAsset("js/lib/lua.vm.js")).then(function(response) {
+        if (!response.ok)
+          throw new Error("Could not load lua.vm.js. Try Play again.")
+        return response.text()
+      }).catch(function(error) {
+        sourceDownload = undefined
+        throw error
+      })
     }
+    return sourceDownload
   }
 
-  /**
-    * Executes the specified Lua method. Any number of argument can be passed.
-    * Arguments of type string are surrounded with '""'
-    *
-    * @public
-    * @memberof module:mLUA#
-    * @method   Call
-    * @param    {function} luafunc - Lua method to call
-    * @param    {...*} args        - parameters
-    */
-  _this.Call = function(luafunc) {
-    if (_running) {
-      var args = Array.prototype.slice.call(arguments, 1)
-      for(var i = 0 ; i < args.length ; i++)
-        if (typeof args[i] === "string") {
-          args[i] = '"' + args[i].replace(/["\\\x00-\x1f\x7f]/g, function(character) {
-            return "\\" + String(character.charCodeAt(0)).padStart(3, "0")
-          }) + '"'
-        }
-      _this.Exec(luafunc+"("+args.join(",")+")", true)
+  runtime.Start = function(data) {
+    session++
+    if (!worker) {
+      worker = new Worker(window.webwigoAsset("js/lib/lua-worker.js"))
+      worker.addEventListener("message", receive)
+      worker.addEventListener("error", function(event) {
+        if (event.currentTarget !== worker)
+          return
+        terminate()
+        runtime.trigger("evt-luavm-error", "The Lua worker could not run the cartridge.")
+      })
     }
+    running = true
+    return send("start", data, false)
   }
 
-  //
-  // Adds the mLUA instance to the global object so that it can be called
-  // from LuaVM
-  //
-  window.mLUA = _this
+  runtime.Stop = function() {
+    session++
+    running = false
+    if (requests.size)
+      terminate()
+    else if (worker)
+      worker.postMessage({ type: "stop" })
+  }
 
-  // extends module with Backbone Events
-  _.extend(_this, Backbone.Events)
-  return _this
-});
+  runtime.Exec = function(source, fatal) {
+    return running ? send("exec", source, fatal) : Promise.resolve(false)
+  }
+
+  runtime.Call = function(name) {
+    if (!running)
+      return Promise.resolve(false)
+    var args = Array.prototype.slice.call(arguments, 1)
+    for (var i = 0; i < args.length; i++) {
+      if (typeof args[i] === "string") {
+        args[i] = '"' + args[i].replace(/["\\\x00-\x1f\x7f]/g, function(character) {
+          return "\\" + String(character.charCodeAt(0)).padStart(3, "0")
+        }) + '"'
+      } else if (args[i] === undefined || args[i] === null) {
+        args[i] = "nil"
+      }
+    }
+    return runtime.Exec(name + "(" + args.join(",") + ")", true)
+  }
+
+  return _.extend(runtime, Backbone.Events)
+})

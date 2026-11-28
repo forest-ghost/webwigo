@@ -31,8 +31,9 @@
       this.link       = L.DomUtil.create('a', 'leaflet-bar-part', container);
       this.link.href  = '#';
       this.link.title = this.options.title;
+      this.link.setAttribute("aria-label", this.options.title);
 
-      L.DomUtil.create('i', this.options.icon, this.link);
+      L.DomUtil.create('i', this.options.icon, this.link).setAttribute("aria-hidden", "true");
       L.DomEvent.on(this.link, 'click', this._click, this);
 
       return container;

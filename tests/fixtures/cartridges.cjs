@@ -43,7 +43,7 @@ function archive(entries = { "cartridge.lua": fixture("media.lua"), "beep.wav": 
   for (const [name, contents] of Object.entries(entries)) {
     zip.file(name, new Uint8Array(Buffer.from(contents)))
   }
-  return Buffer.from(zip.generate({ type: "uint8array" }))
+  return zip.generateAsync({ type: "nodebuffer" })
 }
 
 function compiled(bytecode = fixture("media.luac"), sound = { type: 17, bytes: beep() }) {

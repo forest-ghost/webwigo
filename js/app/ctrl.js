@@ -33,7 +33,8 @@ define([
         viewInfo.hide  ()
       },
       "click #id-tab-btn-reload": function() {
-        viewLoad.reload()
+        if (!mEMU.isPlaying() || window.confirm("Reload this cartridge file and discard the current progress?"))
+          viewLoad.reload()
       },
       "click #id-tab-btn-info": function() {
         viewLoad.hide  ()
@@ -49,7 +50,14 @@ define([
         $("#id-tab-btn-reload").toggleClass("disabled", mRDR.isRemote()).prop("disabled", mRDR.isRemote())
       })
 
-      if (window.location.search !== "")
+      window.addEventListener("beforeunload", function(event) {
+        if (mEMU.isPlaying()) {
+          event.preventDefault()
+          event.returnValue = true
+        }
+      })
+      var query = new URLSearchParams(window.location.search)
+      if (query.has("cart_url") || query.has("cart_type"))
         viewLoad.load(window.location.search)
     },
   });

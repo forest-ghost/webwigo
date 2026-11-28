@@ -1,5 +1,5 @@
 <div id="<%= id %>">
-  <div>
+  <div id="id-splashscreen-description">
     <% if (media) { %>
     <div class="wig-spacer">
       <div class="wig-image-container">
@@ -20,18 +20,17 @@
       if (version  != "") arr.push(version )
       if (author   != "") arr.push(author  )
       if (company  != "") arr.push(company )
-      print(arr.join(" - "))
+      print(_.escape(arr.join(" - ")))
     %>
     </h5>
     <% } %>
     <% if (desc) { %>
     <p  class="wig-text"><%= desc %></p>
     <% } %>
-    <%if (locdesc || locless) { %>
+    <% if (locdesc || locless) { %>
     <h5 class="wig-header">Starting location</h5>
     <p  class="wig-text">
       <%= locdesc %>
-    <% } %>
       <%
       if (locless) {
         if (locdesc)
@@ -39,14 +38,14 @@
       %>
         <span class="wig-text wig-warning">
       <%
-        print('This is a "Play Anywhere" cartridge. Drag the green marker to the desired location then click "Play"')
+        print('This is a "Play Anywhere" cartridge. Drag the green marker to your starting location, then select Play.')
       %>
         </span>
       <%
       }
       %>
     </p>
-  </div>
+    <% } %>
   </div>
   <div class="wig-spacer">
     <button type="button" id="<%= id %>-play" class="btn btn-default btn-block wig-btn">Play</button>

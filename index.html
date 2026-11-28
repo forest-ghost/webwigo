@@ -16,17 +16,26 @@
 -->
 
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" manifest="manifest.cache">
+<html lang="en">
 
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="webwigo-assets" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content"/>
     <title>webwigo</title>
     <meta name="author" content="Nicolas Bertin"/>
     <meta name="description" content="webwigo - the online Wherigo&copy; emulator"/>
     <meta name="keywords" content="geocaching,geocache,groundspeak,game,gps,wherigo,cartridge,emulator,player,development,web, online"/>
 
-    <link rel="stylesheet" type="text/css" href="import.css"/>
+    <link rel="stylesheet" href="lib/css/bootstrap-3.4.1.min.css">
+    <link rel="stylesheet" href="lib/jasny-bootstrap.min.css">
+    <link rel="stylesheet" href="lib/jquery-ui.min.css">
+    <link rel="stylesheet" href="lib/jquery.fullPage.css">
+    <link rel="stylesheet" href="lib/css/font-awesome.min.css">
+    <link rel="stylesheet" href="lib/leaflet.css">
+    <link rel="stylesheet" href="lib/leaflet.awesome-markers.css">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="js/lib/m_gui.css">
 
     <!-- project libraries used by (nearly) all modules -->
     <script src="lib/jquery-3.7.1.min.js"></script>
@@ -42,26 +51,16 @@
 
     <script>
 
-/*
-      // new version handling = reload application
-      function onUpdateReady() {
-        console.log("new version found: reloading")
-        window.location.reload(true)
-      }
-
-      // check if a new version is available or not
-      window.applicationCache.addEventListener('updateready', onUpdateReady);
-      if (window.applicationCache.status === window.applicationCache.UPDATEREADY) {
-        onUpdateReady()
-      }
-*/
-
-      $(document).ready(function() {
+      window.addEventListener("DOMContentLoaded", function() {
+        if (!window.jQuery || !$.fn.fullpage || typeof require !== "function") {
+          window.webwigoStartupFailed()
+          return
+        }
         $("#id-fullpage").fullpage({
           sectionsColor       :
-            ["whitesmoke", "whitesmoke", "whitesmoke", "whitesmoke", "whitesmoke", "whitesmoke"],
+            ["whitesmoke", "whitesmoke", "whitesmoke"],
           anchors             :
-            ["map"       , "code"      , "data"      , "conf"      , "help"      , "about"     ],
+            ["map", "code", "data"],
           menu                : "#menu-left",
           paddingTop          : "48px",
           scrollingSpeed      : 500,
@@ -71,7 +70,8 @@
           afterRender: function() {
             require(["app/app1"], function(app) {
               app.init1()
-            })
+              window.webwigoStartupReady()
+            }, window.webwigoStartupFailed)
           },
           onLeave: function(srcidx, dstidx, direction) {
             require(["app/app0"], function(app) {
@@ -99,41 +99,28 @@
     <div id="header">
       <ul id="menu-left" class="menu">
         <li data-menuanchor="map">
-          <a href="#map"><i class="fa fa-map-o" title="Map"></i></a>
+          <a href="#map" aria-label="Map"><i class="fa fa-map-o" aria-hidden="true"></i></a>
         </li>
         <li>
           <button type="button" id="id-tab-btn-playstop" class="menu-action disabled" aria-label="Play cartridge" disabled><i class="fa fa-play" aria-hidden="true" title="Play/Stop"></i></button>
         </li>
-        <li>|</li>
         <li>
-          <button type="button" id="id-tab-btn-load" class="menu-action" aria-label="Load cartridge"><i class="fa fa-folder-open-o" aria-hidden="true" title="Load"></i></button>
+          <button type="button" id="id-tab-btn-load" class="menu-action" aria-label="Load cartridge" autocomplete="off" disabled>
+            <i class="fa fa-folder-open-o" aria-hidden="true"></i> <span>Load</span>
+          </button>
         </li>
-        <li>
-          <button type="button" id="id-tab-btn-reload" class="menu-action disabled" aria-label="Reload cartridge" disabled><i class="fa fa-refresh" aria-hidden="true" title="Reload"></i></button>
+        <li class="dropdown builder-tools">
+          <button type="button" id="id-builder-tools" class="menu-action dropdown-toggle" data-toggle="dropdown" aria-expanded="false">Tools <span class="caret" aria-hidden="true"></span></button>
+          <ul class="dropdown-menu" aria-labelledby="id-builder-tools">
+            <li><button type="button" id="id-tab-btn-reload" class="menu-action" disabled title="Reload the local file and reset progress">Reload file</button></li>
+            <li><button type="button" id="id-tab-btn-info" class="menu-action" disabled>Cartridge info</button></li>
+            <li data-menuanchor="code"><button type="button" id="id-tab-btn-code" class="menu-action disabled" disabled>Code</button></li>
+            <li data-menuanchor="data"><button type="button" id="id-tab-btn-data" class="menu-action disabled" disabled>Data</button></li>
+            <li><button type="button" id="id-tab-btn-debug" class="menu-action">Debug console</button></li>
+            <li><button type="button" id="id-tab-btn-basemap" class="menu-action" aria-pressed="true">Basemap</button></li>
+            <li><button type="button" id="id-tab-btn-hidden-zones" class="menu-action" aria-pressed="false">Show hidden zones</button></li>
+          </ul>
         </li>
-        <li>
-          <button type="button" id="id-tab-btn-info" class="menu-action disabled" aria-label="Cartridge information" disabled><i class="fa fa-info" aria-hidden="true" title="Cartridge information"></i></button>
-        </li>
-        <li>|</li>
-        <li data-menuanchor="code">
-          <a id="id-tab-btn-code" href="#code" class="disabled"><i class="fa fa-code"></i></a>
-        </li>
-        <li data-menuanchor="data">
-          <a id="id-tab-btn-data" href="#data" class="disabled"><i class="fa fa-image"></i></a>
-        </li>
-        <li>|</li>
-        <li data-menuanchor="conf">
-          <a id="id-tab-btn-conf" href="#conf" class="disabled"><i class="fa fa-cogs"></i></a>
-        </li>
-<!-- [20190128/nbertin] removed
-        <li>|</li>
-        <li data-menuanchor="help">
-          <a href="#help">help</a>
-        </li>
-        <li data-menuanchor="about">
-          <a href="#about">about</a>
-        </li>
--->
       </ul>
       <ul id="menu-right" class="menu">
         <li>
@@ -163,6 +150,11 @@
 
     </div>
 
+    <div id="id-player-status" role="status">
+      <span>Loading WebWigo…</span>
+      <button type="button" id="id-player-retry" hidden>Reload page</button>
+    </div>
+
     <div id="id-main">
       <div id="id-fullpage">
         <div class="section" id="section-emap">
@@ -174,9 +166,7 @@
         <div class="section" id="section-data">
           <div class="std-page container" id="id-data"></div>
         </div>
-        <div class="section" id="section-conf">
-          <div class="std-page container" id="id-conf"></div>
-        </div>
+
 <!-- [20190128/nbertin] removed
         <div class="section" id="section-help">
           <div class="std-page container" id="id-help">
@@ -225,7 +215,9 @@
     <div id="id-vars" style="display: none;"></div>
 -->
 
-    <script data-main="js/boot" src="lib/require.js"></script>
+    <script src="js/startup.js"></script>
+    <script src="lib/require.js"></script>
+    <script src="js/boot.js"></script>
 
   </body>
 </html>

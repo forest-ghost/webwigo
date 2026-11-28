@@ -23,7 +23,7 @@ test.beforeEach(async ({ page, baseURL }) => {
 })
 
 test("wheel and Page Down stay in the active view while toolbar links navigate", async ({ page }) => {
-  await load(page, "synthetic.gwz", archive())
+  await load(page, "synthetic.gwz", await archive())
   const activeView = page.locator(".fp-section.active")
   await expect(activeView).toHaveId("section-emap")
 
@@ -46,10 +46,16 @@ test("wheel and Page Down stay in the active view while toolbar links navigate",
   await expect(scale).not.toHaveText(originalScale)
   await expect(activeView).toHaveId("section-emap")
 
+  await expect(page.locator("#id-code pre")).toHaveCount(0)
+  await expect(page.locator("#id-data img")).toHaveCount(0)
+  await page.locator("#id-builder-tools").click()
   await page.locator("#id-tab-btn-code").click()
   await expect(activeView).toHaveId("section-code")
+  await expect(page.locator("#id-code .token").first()).toBeVisible()
+  await page.locator("#id-builder-tools").click()
   await page.locator("#id-tab-btn-data").click()
   await expect(activeView).toHaveId("section-data")
+  await expect(page.locator("#id-data img").first()).toBeVisible()
   await page.locator('#menu-left a[href="#map"]').click()
   await expect(activeView).toHaveId("section-emap")
 })
@@ -113,6 +119,47 @@ test("Play can recover from an engine download failure", async ({ page }) => {
   await expect(message(page)).toContainText("Choose a test")
 })
 
+test("first Play loads Lua, shows Loading, and retries a failed VM download", async ({ page }) => {
+  const vm = "**/js/lib/lua.vm.js"
+  const requests = []
+  page.on("request", request => {
+    if (request.url().endsWith("/js/lib/lua.vm.js"))
+      requests.push(request.url())
+  })
+  const earlier = await page.evaluate(() => performance.getEntriesByType("resource")
+    .filter(entry => entry.name.endsWith("/js/lib/lua.vm.js")).length)
+  expect(earlier).toBe(0)
+  await load(page, "gameplay.lua", fixture("gameplay.lua"))
+  expect(requests).toHaveLength(0)
+
+  let failDownload
+  const pending = new Promise(resolve => { failDownload = resolve })
+  await page.route(vm, async route => {
+    await pending
+    await route.fulfill({ status: 503 })
+  }, { times: 1 })
+  const splashButton = page.locator("#id-splashscreen-play")
+  try {
+    await splashButton.click()
+    await expect(splashButton).toHaveText("Loading")
+    await expect(splashButton).toBeDisabled()
+    await expect.poll(() => requests.length).toBe(1)
+  } finally {
+    failDownload()
+  }
+  await expect(page.locator("#id-emul")).toContainText("Could not load lua.vm.js")
+  await page.locator("#id-lua-notice-ok").click()
+  await expect(splashButton).toHaveText("Play")
+  await splashButton.click()
+  await expect(message(page)).toContainText("Choose a test")
+  expect(requests).toHaveLength(2)
+
+  await page.getByRole("button", { name: "Stop cartridge" }).click()
+  await splashButton.click()
+  await expect(message(page)).toContainText("Choose a test")
+  expect(requests).toHaveLength(2)
+})
+
 for (const [extension, makeCartridge] of [["gwz", archive], ["gwc", compiled]]) {
   test(`local .${extension} audio plays without fetching a media file`, async ({ page }) => {
     await page.addInitScript(forceBlock => {
@@ -137,12 +184,14 @@ for (const [extension, makeCartridge] of [["gwz", archive], ["gwc", compiled]]) 
     const requested = []
     page.on("request", request => requested.push(request.url()))
 
-    await load(page, `synthetic.${extension}`, makeCartridge())
+    await load(page, `synthetic.${extension}`, await makeCartridge())
     if (extension === "gwc") {
       await expect(page.locator("#id-splashscreen")).toContainText("Départ près du test")
+      await page.locator("#id-builder-tools").click()
       await page.locator("#id-tab-btn-info").click()
       const info = page.locator("#id-tab-info-toaster")
       await expect(info).toContainText("3 (1 Lua, 0 images, 1 sounds, 1 others)")
+      await page.locator("#id-builder-tools").click()
       await page.locator("#id-tab-btn-info").click()
       await expect(info).toBeHidden()
     }
@@ -177,7 +226,7 @@ test("speaker toggles cartridge audio and keeps the setting after Stop and Reloa
   await expect(speaker.locator("i")).toHaveClass(/fa-volume-off/)
   await expect(speaker).toHaveAttribute("aria-pressed", "false")
 
-  await load(page, "synthetic.gwz", archive())
+  await load(page, "synthetic.gwz", await archive())
   const play = page.getByRole("button", { name: "Play", exact: true })
   await play.click()
   await expect(message(page)).toContainText("Audio requested")
@@ -189,9 +238,123 @@ test("speaker toggles cartridge audio and keeps the setting after Stop and Reloa
 
   await speaker.click()
   await page.getByRole("button", { name: "Stop cartridge" }).click()
-  await page.getByRole("button", { name: "Reload cartridge" }).click()
+  await page.locator("#id-builder-tools").click()
+  await page.getByRole("button", { name: "Reload file" }).click()
   await play.click()
   await expect(message(page)).toContainText("Audio requested")
   await expect(speaker).toHaveAttribute("aria-pressed", "false")
   await page.waitForFunction(() => window.fixtureAudio?.muted === true)
+})
+
+
+test("a narrow screen keeps Play and a keyboard prompt usable", async ({ page }) => {
+  const source = Buffer.from([
+    'local Wherigo = require "Wherigo"',
+    'local cart = Wherigo.ZCartridge()',
+    'cart.Name = "Mobile layout fixture"',
+    'cart.Description = "' + "A long synthetic description for the emulator panel. ".repeat(32) + '"',
+    'local prompt = Wherigo.ZInput(cart)',
+    'prompt.Text = "Enter the test word"',
+    'prompt.InputType = "Text"',
+    'function prompt:OnGetInput(answer) Wherigo.MessageBox{Text = "Received: " .. answer} end',
+    'function cart:OnStart() Wherigo.GetInput(prompt) end',
+    'return cart',
+  ].join("\n"))
+  await load(page, "mobile.lua", source)
+  await page.setViewportSize({ width: 320, height: 568 })
+
+  const splashPlay = page.locator("#id-splashscreen-play")
+  await expect(splashPlay).toBeInViewport({ ratio: 1 })
+  await expect(page.getByRole("button", { name: "Tools" })).toBeInViewport({ ratio: 1 })
+  await expect(page.getByRole("button", { name: "Cartridge sound" })).toBeInViewport({ ratio: 1 })
+  await expect(page.getByRole("link", { name: "About" })).toBeInViewport({ ratio: 1 })
+  const tools = page.getByRole("button", { name: "Tools" })
+  await tools.click()
+  const reload = page.getByRole("button", { name: "Reload file" })
+  await expect(reload).toBeVisible()
+  expect(await reload.evaluate(button => {
+    const bounds = button.getBoundingClientRect()
+    return button.contains(document.elementFromPoint(bounds.left + 20, bounds.top + bounds.height / 2))
+  })).toBe(true)
+  await tools.click()
+  await splashPlay.click()
+
+  const input = page.getByRole("textbox", { name: "Answer" })
+  await expect(input).toBeFocused()
+  await input.fill("trail")
+  await input.press("Enter")
+  await expect(message(page)).toContainText("Received: trail")
+  await expect(message(page).getByRole("button")).toBeFocused()
+})
+
+test("the Stop button recovers from a cartridge stuck during startup", async ({ page }) => {
+  const source = Buffer.from([
+    'local Wherigo = require "Wherigo"',
+    'local cart = Wherigo.ZCartridge()',
+    'cart.Name = "Slow fixture"',
+    'function cart:OnStart()',
+    '  print("Starting fixture loop")',
+    '  while true do end',
+    'end',
+    'return cart',
+  ].join("\n"))
+  await load(page, "slow.lua", source)
+  const loopEntered = page.waitForEvent("console", {
+    predicate: entry => entry.text().includes("Starting fixture loop"),
+  })
+  await page.locator("#id-splashscreen-play").click()
+  await loopEntered
+  await page.getByRole("button", { name: "Stop cartridge" }).click()
+  await load(page, "gameplay.lua", fixture("gameplay.lua"))
+  await page.locator("#id-splashscreen-play").click()
+  await expect(message(page)).toContainText("Choose a test")
+})
+
+test("hidden zones disappear and can be shown explicitly by a builder", async ({ page }) => {
+  const source = fixture("gameplay.lua").toString().replace(
+    'function cart:OnStart()\n', 'function cart:OnStart()\n  zone.Visible = false\n')
+  await load(page, "zones.lua", Buffer.from(source))
+  await page.locator("#id-splashscreen-play").click()
+  await expect(message(page)).toContainText("Choose a test")
+  await expect(page.locator("#id-emap path[stroke='green']")).toHaveCount(0)
+  await page.getByRole("button", { name: "Tools" }).click()
+  await page.getByRole("button", { name: "Show hidden zones" }).click()
+  await expect(page.locator("#id-emap path[stroke='red']")).toHaveCount(1)
+  await page.getByRole("button", { name: "Tools" }).click()
+  await page.getByRole("button", { name: "Show hidden zones" }).click()
+  await expect(page.locator("#id-emap path[stroke='red']")).toHaveCount(0)
+})
+
+test("ordinary query parameters leave the player ready and a private basemap stays off", async ({ page }) => {
+  await page.goto("/?utm_source=fixture")
+  await expect(page.getByRole("button", { name: "Load cartridge" })).toBeEnabled()
+  await expect(page.locator("#id-tab-load-toaster")).toBeHidden()
+  const supportedFiles = page.getByText("Supported files: .gwc, .gwz, and .lua.")
+  await expect(supportedFiles).toBeHidden()
+  const loadButton = page.getByRole("button", { name: "Load cartridge" })
+  await loadButton.click()
+  await expect(supportedFiles).toBeVisible()
+  await loadButton.click()
+  await page.getByRole("button", { name: "Tools" }).click()
+  await page.getByRole("button", { name: "Basemap" }).click()
+  const tiles = []
+  page.on("request", request => {
+    if (request.url().startsWith("https://tile.openstreetmap.org/"))
+      tiles.push(request.url())
+  })
+  await page.reload({ waitUntil: "networkidle" })
+  await load(page, "gameplay.lua", fixture("gameplay.lua"))
+  await page.getByRole("button", { name: "Simulated GPS off" }).click()
+  await expect(page.locator("#id-latitude")).toHaveText("N00° 03.000")
+  await expect(page.getByText("Set location", { exact: true })).toHaveCount(0)
+  expect(tiles).toHaveLength(0)
+})
+
+test("failed startup tells the player to reload and keeps Load unavailable", async ({ page }) => {
+  await page.route("**/js/app/app1.js", route => route.abort())
+  await page.reload()
+  const status = page.locator("#id-player-status")
+  await expect(status).toContainText("WebWigo could not start")
+  await expect(page.getByRole("button", { name: "Reload page" })).toBeVisible()
+  await expect(page.getByRole("button", { name: "Load cartridge" })).toBeDisabled()
 })

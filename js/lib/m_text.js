@@ -3,9 +3,9 @@ define([], function() {
   var legacy = new TextDecoder("windows-1252")
 
   return function decodeByteString(text) {
-    var bytes = Uint8Array.from(text, function(character) {
+    var bytes = typeof text === "string" ? Uint8Array.from(text, function(character) {
       return character.charCodeAt(0)
-    })
+    }) : text
     try {
       return utf8.decode(bytes)
     } catch (error) {

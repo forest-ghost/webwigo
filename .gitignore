@@ -1,7 +1,9 @@
 # webwigo ignored files
 pkg/*
 .vercel
+.cloudflare/
 .env*
 /tests/node_modules/
 /tests/playwright-report/
 /tests/test-results/
+/dist/

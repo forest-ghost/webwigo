@@ -22,11 +22,10 @@ define([
   "app/emul",
   "app/code",
   "app/data",
-  "app/conf",
   "app/term"/*,
   "app/help",
   "app/about"*/
-], function(ViewCtrl, ViewEMap, ViewGpsr, ViewEmul, ViewCode, ViewData, ViewConf, ViewTerm/*, ViewHelp, ViewAbout*/) {
+], function(ViewCtrl, ViewEMap, ViewGpsr, ViewEmul, ViewCode, ViewData, ViewTerm/*, ViewHelp, ViewAbout*/) {
 
   var _this = {}
 
@@ -43,7 +42,6 @@ define([
     new ViewCtrl()
     new ViewCode()
     new ViewData()
-    new ViewConf()
     new ViewTerm()
 //    new ViewHelp()
 //    new ViewAbout()

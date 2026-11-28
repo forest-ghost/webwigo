@@ -16,53 +16,53 @@
 */
 
 define([
-  "prism",
+  "require",
   "text!app/tpl/code.html",
   "lib/m_rdr",
   "app/app0"
-], function(Prism, T, mRDR, App) {
+], function(require, T, mRDR, App) {
 
   var ViewCode = Backbone.View.extend({
     el        : $("#id-code"),
     template  : _.template(T),
-    initialize: function(options) {
-      // check if section is active on initialization.
-      if ($("#section-code").hasClass("active"))
-        $.fn.fullpage.silentMoveTo(SECTION_HOME)
-
-      // render section on cartridge loaded event
-      this.listenTo(mRDR, "evt-gwx-loaded", function(gwx) {
-        this.render(gwx)
+    initialize: function() {
+      var view = this
+      var button = $("#id-tab-btn-code")
+      button.on("click", function() {
+        $.fn.fullpage.moveTo(SECTION_CODE)
       })
-
-      // fullpage plugin event: section leave
-      this.listenTo(App, "evt-app-on-section-leave", function(srcidx, dstidx, direction) {
-        if (dstidx == SECTION_CODE)
-          if ($("#id-tab-btn-code").hasClass("disabled")) {
-            if (direction === "up")
-              $.fn.fullpage.moveTo(dstidx-1)
-            else
-              $.fn.fullpage.moveTo(dstidx+1)
-          }
+      this.listenTo(mRDR, "evt-gwx-loaded", function(gwx) {
+        this.$el.empty()
+        this.reader = gwx.canSeeCode() ? gwx : null
+        this.rendered = false
+        button.toggleClass("disabled", !this.reader).prop("disabled", !this.reader)
+      })
+      this.listenTo(App, "evt-app-on-section-loaded", function(anchor, index) {
+        if (index !== SECTION_CODE)
+          return
+        if (!view.reader) {
+          $.fn.fullpage.silentMoveTo(SECTION_HOME)
+          return
+        }
+        if (!view.rendered) {
+          view.rendered = true
+          view.render(view.reader)
+        }
       })
     },
     render: function(gwx) {
-      this.$el.empty()
-      if (gwx.canSeeCode()) {
-        this.$el.html(this.template({
-          code: gwx.getCode()
-        }))
-        _.defer(function() {
-          Prism.highlightAll()
-        })
-        // force a rebuild to get the scrollbar
-        $.fn.fullpage.reBuild();
-        $("#id-tab-btn-code").toggleClass("disabled", false)
-      } else {
-        $("#id-tab-btn-code").toggleClass("disabled", true)
-        if ($("#section-code").hasClass("active"))
-          $.fn.fullpage.moveTo(SECTION_HOME)
-      }
+      this.$el.html(this.template({
+        code: gwx.getCode()
+      }))
+      if (!document.getElementById("id-prism-style"))
+        $("<link>", { id: "id-prism-style", rel: "stylesheet", href: window.webwigoAsset("lib/prism.css") }).appendTo("head")
+      require(["prism"], function(Prism) {
+        var source = document.querySelector("#id-code code")
+        if (source)
+          Prism.highlightElement(source)
+      })
+      // force a rebuild to get the scrollbar
+      $.fn.fullpage.reBuild();
       return this
     }
   });

@@ -5,16 +5,16 @@
       <img id="<%= id %>-img" class="wig-image" alt="<%- media %>" title="<%- media %>"/>
     <% } %>
     </div>
-    <p class="wig-text"><%= txt %></p>
+    <p class="wig-text" id="<%= id %>-prompt"><%= txt %></p>
     <%
     if (type === "Text") {
     %>
-      <div class="input-group">
-        <span class="input-group-btn">
-          <button id="<%= id %>-submit" class="btn btn-success" style="font-size: 14px;">Ok</button>
-        </span>
-        <input id="<%= id %>-value" type="text" class="form-control wig-input">
-      </div>
+      <form id="<%= id %>-form" class="wig-input-actions">
+        <label>Answer
+          <input id="<%= id %>-value" type="text" class="form-control wig-input" aria-describedby="<%= id %>-prompt">
+        </label>
+        <button type="submit" id="<%= id %>-submit" class="btn btn-success">OK</button>
+      </form>
     <%
     } else {
       for(var i = 0 ; i < choices.length ; i++) {

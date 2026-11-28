@@ -26,12 +26,16 @@ define([
   var _hdle = undefined
   var _vobj = undefined
   var _request = 0
+  var pendingReader
 
   _this.read = function(hdle, cb_onProgress, cb_onStatus, cb_onError) {
     var file = undefined
     var type = undefined
 
     var request = ++_request
+    if (pendingReader && pendingReader.cancelRead)
+      pendingReader.cancelRead()
+    pendingReader = undefined
     var reader
 
     // check if handle is an URI or not (= File object)
@@ -71,11 +75,13 @@ define([
         cb_onError("ERR_GWZ_OR_GWC_OR_LUA_FILE_EXPECTED")
         return
     }
+    pendingReader = reader
     reader.read(file, function(gwx) {
       if (request !== _request) {
         gwx.dispose()
         return
       }
+      pendingReader = undefined
       var previous = _vobj
       _hdle = hdle
       _vobj = gwx
@@ -93,8 +99,10 @@ define([
         cb_onStatus(status)
     }, function(error) {
       reader.dispose()
-      if (request === _request)
+      if (request === _request) {
+        pendingReader = undefined
         cb_onError(error)
+      }
     })
   }
 

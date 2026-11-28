@@ -474,7 +474,7 @@ WIGInternal.AttributeChangedEvent = function(obj, attr)
   if (obj.ClassName == "Zone") then
       LUA2JS_RefreshZone(obj)
   else
-    if obj.ClassName ~= "ZInput" or obj.ClassName ~= "ZMedia" then
+    if obj.ClassName ~= "ZInput" and obj.ClassName ~= "ZMedia" then
       if Player and Player.Cartridge then
         __refresh_objects()
       end

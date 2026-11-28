@@ -98,7 +98,7 @@ define([
 
   _this.SetStarting = function(starting) {
     $("#id-splashscreen-play").prop("disabled", starting)
-      .text(starting ? "Loading engine…" : "Play")
+      .text(starting ? "Loading" : "Play")
   }
 
   function respondToPopup(popup, callback, value) {
@@ -142,7 +142,8 @@ define([
             })
           })
         } else {
-          $("#id-getinput-submit").click(function() {
+          $("#id-getinput-form").on("submit", function(event) {
+            event.preventDefault()
             respondToPopup(gobj, "JS2LUA_GetInput", $("#id-getinput-value").val())
           })
         }
@@ -150,6 +151,15 @@ define([
         $("#id-getinput-back").click(function() {
           respondToPopup(gobj, "JS2LUA_GetInput", "<cancelled>")
         })
+        gobj.object.on("keydown", function(event) {
+          if (event.key === "Escape") {
+            event.stopPropagation()
+            respondToPopup(gobj, "JS2LUA_GetInput", "<cancelled>")
+          }
+        })
+      },
+      onvisible: function() {
+        gobj.object.find("input, button").first().trigger("focus")
       }
     }
 
@@ -191,6 +201,9 @@ define([
             })
           }
         }
+      },
+      onvisible: function() {
+        gobj.object.find("button").first().trigger("focus")
       }
     }
     mSCR.Show(gobj)
@@ -489,10 +502,16 @@ define([
       _screens[i].items = []
     mSCR.Clear()
     $("#id-emul-status").empty().prop("hidden", true)
+    $("#id-emul-completion").prop("hidden", true)
+  }
+
+  _this.ShowCompletion = function() {
+    $("#id-emul-completion").prop("hidden", false)
   }
 
   _this.Create = function(emudiv) {
     mSCR.Create(emudiv)
+    $(emudiv).append('<p id="id-emul-completion" role="status" hidden>Cartridge completed in the emulator.</p>')
     $(emudiv).append('<p id="id-emul-status" class="wig-text" role="status" hidden></p>')
 
     _this.listenTo(mWIG, "evt-wig-refresh-objects", function(obj) {

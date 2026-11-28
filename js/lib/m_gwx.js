@@ -31,6 +31,8 @@ define([
     return str
   }
 
+  var maxCartridgeBytes = 64 * 1024 * 1024
+
   var _this = Class.extend({
 
     _code   : undefined,
@@ -64,6 +66,7 @@ define([
         var xhr  = new XMLHttpRequest()
         var that = this
         var load = 0
+        this.cancelRead = function() { xhr.abort() }
 
         cb_onStatus(state2str(xhr.readyState)) // = UNSENT
         xhr.open('GET', uri, true)
@@ -83,8 +86,10 @@ define([
               var blob = new Blob(
                 [xhr.response], { type: "application/octet-binary"}
               )
-              // handle cartridge data (gwc, gwz or lua)
-              that._read(blob, uri, cb_onSuccess, cb_onError)
+              if (blob.size > maxCartridgeBytes)
+                cb_onError("ERR_CARTRIDGE_TOO_LARGE")
+              else
+                that._read(blob, uri, cb_onSuccess, cb_onError)
               break
             case 404:
               cb_onError("ERR_FILE_NOT_FOUND("+this.status+")")
@@ -102,10 +107,17 @@ define([
           cb_onError("ERR_READ_TIMEOUT("+(xhr.timeout/1000)+"s)")
         }
         xhr.onprogress = function(e) {
-          cb_onProgress(e.loaded, e.total)
+          if (e.loaded > maxCartridgeBytes || e.total > maxCartridgeBytes) {
+            xhr.abort()
+            cb_onError("ERR_CARTRIDGE_TOO_LARGE")
+          } else {
+            cb_onProgress(e.loaded, e.total)
+          }
         }
         cb_onStatus(state2str(xhr.readyState)) // = OPENED
         xhr.send()
+      } else if (file.size > maxCartridgeBytes) {
+        cb_onError("ERR_CARTRIDGE_TOO_LARGE")
       } else {
         this._read(file, file.name, cb_onSuccess, cb_onError)
       }

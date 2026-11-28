@@ -27,11 +27,25 @@ define([
   // emulator window (dialog)
   var _emulvdlg   = undefined
 
+  function fitEmulator() {
+    if (!_emulvdlg)
+      return
+    var wide = window.innerWidth > 700
+    $("#id-emul").dialog("option", {
+      width: Math.min(400, Math.max(0, window.innerWidth - 24)),
+      maxHeight: Math.max(120, window.innerHeight - 60),
+      draggable: wide,
+      resizable: wide,
+      position: { my: "right top", at: "right top+48", of: window, collision: "fit" }
+    })
+  }
+
   // toggle play/stop button
   function _toggle_playstop(fl) {
     $("#id-tab-btn-playstop").removeClass("disabled").prop("disabled", false)
       .attr("aria-label", fl ? "Play cartridge" : "Stop cartridge")
     $("#id-tab-btn-playstop i")
+      .attr("title", fl ? "Play cartridge from the beginning" : "Stop and reset the current run")
       .toggleClass("fa-stop" , ! fl)
       .toggleClass("fa-play" ,   fl)
   }
@@ -49,6 +63,18 @@ define([
       },
     },
     initialize: function() {
+      this.listenTo(App, "evt-app-on-window-resize", fitEmulator)
+      if (window.visualViewport) {
+        var viewport = window.visualViewport
+        var updateVisibleArea = function() {
+          var inset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)
+          document.documentElement.style.setProperty("--webwigo-bottom-inset", inset + "px")
+          document.documentElement.style.setProperty("--webwigo-visible-height", viewport.height + "px")
+        }
+        viewport.addEventListener("resize", updateVisibleArea)
+        viewport.addEventListener("scroll", updateVisibleArea)
+        updateVisibleArea()
+      }
       // fullpage plugin event: section leaved = hide/show emulator dialog
       this.listenTo(App, "evt-app-on-section-leave", function(srcidx, dstidx, direction) {
         if (_emulvdlg) {
@@ -62,7 +88,7 @@ define([
       this.listenTo(mRDR, "evt-gwx-loaded", function(gwx) {
         if (_emulvdlg == undefined) {
           $("#id-emul").dialog({
-            classes    : { "ui-dialog": "vdlg-margin-top" },
+            classes    : { "ui-dialog": "vdlg-margin-top emulator-dialog" },
             position   : { my: "right top", at: "right top+48", of: window },
             minWidth   : 0,
             width      : Math.min(400, Math.max(0, window.innerWidth - 24)),
@@ -75,13 +101,14 @@ define([
           })
           _emulvdlg = $("#id-emul").dialog("widget")
 
+          fitEmulator()
           mEMU.Create("#id-emul")
         }
         mEMU.Start()
         $.fn.fullpage.moveTo(SECTION_HOME)
       })
 
-      this.listenTo(mEMU, "evt-emu-cartridge-playing", function() {
+      this.listenTo(mEMU, "evt-emu-starting evt-emu-cartridge-playing", function() {
         _is_running = true
         _toggle_playstop(false)
       })

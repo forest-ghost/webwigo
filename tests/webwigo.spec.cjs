@@ -247,44 +247,49 @@ test("speaker toggles cartridge audio and keeps the setting after Stop and Reloa
 })
 
 
-test("a narrow screen keeps Play and a keyboard prompt usable", async ({ page }) => {
-  const source = Buffer.from([
-    'local Wherigo = require "Wherigo"',
-    'local cart = Wherigo.ZCartridge()',
-    'cart.Name = "Mobile layout fixture"',
-    'cart.Description = "' + "A long synthetic description for the emulator panel. ".repeat(32) + '"',
-    'local prompt = Wherigo.ZInput(cart)',
-    'prompt.Text = "Enter the test word"',
-    'prompt.InputType = "Text"',
-    'function prompt:OnGetInput(answer) Wherigo.MessageBox{Text = "Received: " .. answer} end',
-    'function cart:OnStart() Wherigo.GetInput(prompt) end',
-    'return cart',
-  ].join("\n"))
-  await load(page, "mobile.lua", source)
-  await page.setViewportSize({ width: 320, height: 568 })
+test.describe("touch navigation", () => {
+  test.use({ hasTouch: true })
 
-  const splashPlay = page.locator("#id-splashscreen-play")
-  await expect(splashPlay).toBeInViewport({ ratio: 1 })
-  await expect(page.getByRole("button", { name: "Tools" })).toBeInViewport({ ratio: 1 })
-  await expect(page.getByRole("button", { name: "Cartridge sound" })).toBeInViewport({ ratio: 1 })
-  await expect(page.getByRole("link", { name: "About" })).toBeInViewport({ ratio: 1 })
-  const tools = page.getByRole("button", { name: "Tools" })
-  await tools.click()
-  const reload = page.getByRole("button", { name: "Reload file" })
-  await expect(reload).toBeVisible()
-  expect(await reload.evaluate(button => {
-    const bounds = button.getBoundingClientRect()
-    return button.contains(document.elementFromPoint(bounds.left + 20, bounds.top + bounds.height / 2))
-  })).toBe(true)
-  await tools.click()
-  await splashPlay.click()
+  test("a narrow screen keeps Play and a keyboard prompt usable", async ({ page }) => {
+    const source = Buffer.from([
+      'local Wherigo = require "Wherigo"',
+      'local cart = Wherigo.ZCartridge()',
+      'cart.Name = "Mobile layout fixture"',
+      'cart.Description = "' + "A long synthetic description for the emulator panel. ".repeat(32) + '"',
+      'local prompt = Wherigo.ZInput(cart)',
+      'prompt.Text = "Enter the test word"',
+      'prompt.InputType = "Text"',
+      'function prompt:OnGetInput(answer) Wherigo.MessageBox{Text = "Received: " .. answer} end',
+      'function cart:OnStart() Wherigo.GetInput(prompt) end',
+      'return cart',
+    ].join("\n"))
+    await load(page, "mobile.lua", source)
+    await page.setViewportSize({ width: 320, height: 568 })
 
-  const input = page.getByRole("textbox", { name: "Answer" })
-  await expect(input).toBeFocused()
-  await input.fill("trail")
-  await input.press("Enter")
-  await expect(message(page)).toContainText("Received: trail")
-  await expect(message(page).getByRole("button")).toBeFocused()
+    const splashPlay = page.locator("#id-splashscreen-play")
+    await expect(splashPlay).toBeInViewport({ ratio: 1 })
+    await expect(page.getByRole("button", { name: "Tools" })).toBeInViewport({ ratio: 1 })
+    await expect(page.getByRole("button", { name: "Cartridge sound" })).toBeInViewport({ ratio: 1 })
+    await expect(page.getByRole("link", { name: "About" })).toBeInViewport({ ratio: 1 })
+    const tools = page.getByRole("button", { name: "Tools" })
+    await tools.tap()
+    const reload = page.getByRole("button", { name: "Reload file" })
+    await expect(reload).toBeVisible()
+    expect(await reload.evaluate(button => {
+      const bounds = button.getBoundingClientRect()
+      return button.contains(document.elementFromPoint(bounds.left + 20, bounds.top + bounds.height / 2))
+    })).toBe(true)
+    await tools.tap()
+    await expect(tools).toHaveAttribute("aria-expanded", "false")
+    await splashPlay.tap()
+
+    const input = page.getByRole("textbox", { name: "Answer" })
+    await expect(input).toBeFocused()
+    await input.fill("trail")
+    await input.press("Enter")
+    await expect(message(page)).toContainText("Received: trail")
+    await expect(message(page).getByRole("button")).toBeFocused()
+  })
 })
 
 test("the Stop button recovers from a cartridge stuck during startup", async ({ page }) => {

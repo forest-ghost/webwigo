@@ -251,6 +251,11 @@ li > a {
     min-height: 44px;
 }
 
+#header .builder-tools > .dropdown-toggle {
+    position: relative;
+    z-index: 1001;
+}
+
 #header .builder-tools .dropdown-menu {
     min-width: 178px;
     color: #27384a;

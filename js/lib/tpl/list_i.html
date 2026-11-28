@@ -1,36 +1,19 @@
-<button type="button" id="<%= id %>" class="btn btn-info btn-block wig-btn wig-btn-medium">
-  <div class="wig-table">
-    <div class="wig-row">
-    <%
-      if (needrouting) {
-        maxwidth = "max-width: 296px;"
-    %>
-      <div class="wig-cell" style="width: 64px; min-width: 64px;">
-        <div class="text-center" id="<%= id %>-routing"></div>
-      </div>
-    <%
-      } else {
-        maxwidth = "max-width: 370px;"
-      }
-    %>
-    <%
-      lineheight = "line-height: 56px;"
-      if (desc)
-        lineheight = ""
-    %>
-      <div class="wig-cell" style="<%= maxwidth %> <%= lineheight %>">
-        <p class="text-left wig-ellipsis" style="margin-bottom: 0;">
-        <% if (complete) { %>
-          <span class="glyphicon glyphicon-ok" style="padding-right: 4px;"></span>
-        <% } %>
-        <% if (icon) { %>
-          <span><img id="<%= id %>-ico"/></span>&nbsp;
-        <% } %>
-          <span><%- name %></span>
-        </p>
-        <p class="text-left wig-ellipsis" style="margin-bottom: 0; font-size: 1em;"><%= desc %></p>
-      </div>
-    </div>
-  </div>
+<button type="button" id="<%= id %>" class="btn btn-info btn-block wig-btn wig-list-item">
+  <% if (needrouting) { %>
+    <span class="wig-list-routing" id="<%= id %>-routing"></span>
+  <% } %>
+  <% if (icon) { %>
+    <img class="wig-list-icon" id="<%= id %>-ico" alt="" aria-hidden="true">
+  <% } %>
+  <span class="wig-list-label">
+    <span class="wig-list-name">
+      <% if (complete) { %>
+        <span class="glyphicon glyphicon-ok" aria-hidden="true"></span>
+      <% } %>
+      <%- name %>
+    </span>
+    <% if (desc) { %>
+      <span class="wig-list-description"><%= desc %></span>
+    <% } %>
+  </span>
 </button>
- 

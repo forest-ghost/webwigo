@@ -363,3 +363,59 @@ test("failed startup tells the player to reload and keeps Load unavailable", asy
   await expect(page.getByRole("button", { name: "Reload page" })).toBeVisible()
   await expect(page.getByRole("button", { name: "Load cartridge" })).toBeDisabled()
 })
+
+
+test("tall cartridge icons and long descriptions stay inside their list rows", async ({ page }) => {
+  const icon = Buffer.from(await page.evaluate(() => {
+    const canvas = document.createElement("canvas")
+    canvas.width = 100
+    canvas.height = 600
+    const drawing = canvas.getContext("2d")
+    drawing.fillStyle = "#336699"
+    drawing.fillRect(0, 0, canvas.width, canvas.height)
+    return canvas.toDataURL("image/png").split(",", 2)[1]
+  }), "base64")
+  const source = [
+    'local Wherigo = require "Wherigo"',
+    'local cart = Wherigo.ZCartridge()',
+    'cart.Name = "Synthetic list layout"',
+    'local icon = Wherigo.ZMedia(cart)',
+    'icon.Resources = {{Type = "png", Filename = "tall.png"}}',
+    'local first = Wherigo.ZItem(cart)',
+    'first.Name = "Tall icon"',
+    'first.Icon = icon',
+    'first.Description = "' + "A row description with enough text to wrap on a phone. ".repeat(12) + '"',
+    'first.Visible = true',
+    'local second = Wherigo.ZItem(cart)',
+    'second.Name = "Next row"',
+    'second.Visible = true',
+    'function cart:OnStart()',
+    '  first:MoveTo(Wherigo.Player)',
+    '  second:MoveTo(Wherigo.Player)',
+    'end',
+    'return cart',
+  ].join("\n")
+  await page.setViewportSize({ width: 320, height: 568 })
+  await load(page, "layout.gwz", await archive({ "cartridge.lua": source, "tall.png": icon }))
+  await page.locator("#id-splashscreen-play").click()
+  const inventory = page.locator("#id-mainscreen-items-3")
+  await expect(inventory).toContainText("Tall icon")
+  await inventory.click()
+
+  const first = page.getByRole("button", { name: /^Tall icon/ })
+  const second = page.getByRole("button", { name: "Next row" })
+  const image = first.locator("img")
+  await expect.poll(() => image.evaluate(element => element.naturalHeight)).toBe(600)
+  for (const width of [320, 1280]) {
+    await page.setViewportSize({ width, height: 800 })
+    await expect(first).toBeVisible()
+    const [row, thumbnail, description, next] = await Promise.all([
+      first.boundingBox(), image.boundingBox(), first.locator(".wig-list-description").boundingBox(), second.boundingBox(),
+    ])
+    expect(thumbnail.height).toBeLessThanOrEqual(40)
+    expect(thumbnail.y + thumbnail.height).toBeLessThanOrEqual(row.y + row.height)
+    expect(description.y + description.height).toBeLessThanOrEqual(row.y + row.height)
+    const [upper, lower] = [row, next].sort((left, right) => left.y - right.y)
+    expect(upper.y + upper.height).toBeLessThanOrEqual(lower.y)
+  }
+})

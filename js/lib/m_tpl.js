@@ -57,12 +57,13 @@ define([
   _this.dtl__i = dtl__i
 
   function __setmedia(id, media) {
+    var target = $(id)
     var alt = mWIG.getMediaName(media)
-    $(id).attr("alt"  , alt)
-    $(id).attr("title", alt)
+    target.attr("alt", alt)
+    target.attr("title", alt)
     console.log("__setmedia: "+id+" "+media)
     mWIG.getImage(media, function(src) {
-      $(id).attr("src", src)
+      target.attr("src", src)
     })
   }
 

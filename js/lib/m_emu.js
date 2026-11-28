@@ -146,15 +146,11 @@ define([
     mMAP.Reset()
     mGUI.Reset()
 
-    // FIXME
-    //if (mCFG.gpsAutomaticStart())
-    //  mGPS.Stop ()
   }
 
   _this.Create = function(guidiv) {
 
     mWIG.Create()
-    mGPS.Create()
     mMAP.Create()
     mGUI.Create(guidiv)
     _this.listenTo(mLUA, "evt-lua-print", _this.Print)
@@ -191,9 +187,6 @@ define([
         loc = { lat: lat, lng: lng }
 
       mMAP.Start(loc)
-      // FIXME
-      //if (mCFG.gpsAutomaticStart())
-      //  mGPS.Start()
 
       if (gwx.getCartType() == gwx.TYPE_GWC)
         mLUA.Call("JS2LUA_SetPlayerName", gwx.getPlayerName())

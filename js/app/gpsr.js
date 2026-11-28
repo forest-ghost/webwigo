@@ -25,7 +25,7 @@ define([
 ], function(T, mGPS, mMAP, mRDR, mEMU, App) {
 
   var _gpsdata = {
-    run: false,
+    run: mGPS.IsEnabled(),
     lat: undefined,
     lng: undefined,
     acc: undefined
@@ -58,6 +58,7 @@ define([
     },
     template  : _.template(T),
     initialize: function() {
+      mGPS.Create()
       this.render()
 
       // show the view on initialization if the active section is the map

@@ -62,7 +62,7 @@ test("wheel and Page Down stay in the active view while toolbar links navigate",
 
 test("task details, inventory target, literal inputs and zone entry reach Lua", async ({ page }) => {
   await load(page, "gameplay.lua", fixture("gameplay.lua"))
-  await page.locator("#id-gpsr-toggle-onoff").click()
+  await expect(page.getByRole("button", { name: "Simulated GPS on" })).toHaveAttribute("aria-pressed", "true")
   await page.getByRole("button", { name: "Play", exact: true }).click()
   await message(page).getByRole("button", { name: "Gameplay" }).click()
   await expect(message(page)).toContainText("Open the task")
@@ -344,7 +344,12 @@ test("ordinary query parameters leave the player ready and a private basemap sta
   })
   await page.reload({ waitUntil: "networkidle" })
   await load(page, "gameplay.lua", fixture("gameplay.lua"))
-  await page.getByRole("button", { name: "Simulated GPS off" }).click()
+  const gps = page.locator("#id-gpsr-toggle-onoff")
+  await expect(gps).toHaveAttribute("aria-pressed", "true")
+  await gps.click()
+  await expect(gps).toHaveAttribute("aria-pressed", "false")
+  await gps.click()
+  await expect(gps).toHaveAttribute("aria-pressed", "true")
   await expect(page.locator("#id-latitude")).toHaveText("N00° 03.000")
   await expect(page.getByText("Set location", { exact: true })).toHaveCount(0)
   expect(tiles).toHaveLength(0)

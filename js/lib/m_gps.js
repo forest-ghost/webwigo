@@ -29,7 +29,7 @@ define([
 
   // variables
   var gpstimer_tid = undefined
-  var isrunning    = false
+  var isrunning    = true
   var accuracy     = accuracy_max
   var currloc      = {
     lat: 360.0000,
@@ -82,6 +82,10 @@ define([
       gpstimer_tid = setInterval(gpsTimerUpdate, gpstimer_dly)
   }
 
+  _this.IsEnabled = function() {
+    return isrunning
+  }
+
   _this.OnOff = function() {
     if (isrunning)
       _this.Stop()
@@ -93,7 +97,6 @@ define([
     _this.listenTo(mMAP, "evt-map-set-player-location", function(loc) {
       _this.setPlayerLocation(loc)
     })
-    //_this.Stop()
   }
 
   // extends module with Backbone Events

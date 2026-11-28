@@ -15,8 +15,9 @@ On Windows, use `py -3` in place of `python3` if you use the Python launcher.
 Open [http://127.0.0.1:8000/](http://127.0.0.1:8000/) in your browser.
 
 Select **Load** to open a .gwc, .gwz, or .lua cartridge, then press **Play**.
-The Lua engine downloads on first Play. Turn on **Simulated GPS** to send
-player movement to the cartridge when you drag the green player marker.
+The Lua engine downloads on first Play. **Simulated GPS** is on by default
+and sends your position to the cartridge when you drag the green marker.
+You can turn it off from the GPS readout.
 Supported cartridge audio plays from the loaded file in your browser. Use the
 speaker button in the toolbar to mute or unmute it. If the browser blocks
 automatic playback, the same button starts the sound.
